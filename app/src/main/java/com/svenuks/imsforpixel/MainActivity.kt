@@ -9,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
 
         // Initialize defaults: enable everything except APN editing and Cross-SIM Calling, both of which are hidden and disabled by default.
         val prefs = getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
-        val initialized = prefs.getBoolean("initialized_defaults_v3", false)
+        val initialized = prefs.getBoolean("initialized_defaults_v4", false)
         if (!initialized) {
             val editor = prefs.edit()
             for (slot in 0..1) {
@@ -106,9 +108,11 @@ class MainActivity : ComponentActivity() {
                 editor.putBoolean("wfc_roaming_slot_$slot", true)
                 editor.putBoolean("ss_ut_slot_$slot", true)
                 editor.putBoolean("show_ims_slot_$slot", true)
+                editor.putBoolean("show_lte_plus_slot_$slot", true)
+                editor.putBoolean("show_vowifi_spn_slot_$slot", true)
                 editor.putBoolean("allow_apn_slot_$slot", false) // Hidden and default false
             }
-            editor.putBoolean("initialized_defaults_v3", true)
+            editor.putBoolean("initialized_defaults_v4", true)
             editor.apply()
         }
 
@@ -384,25 +388,6 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         isAuthorized = isAuthorized
     )
 
-    if (showWirelessDebugSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showWirelessDebugSheet = false },
-            sheetState = sheetState,
-        ) {
-            WirelessDebugSetupPanel(
-                portInput = portInput,
-                onPortInputChange = { portInput = it },
-                isWifiConnected = isWifiConnected.value,
-                isAuthorized = isAuthorized.value,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 32.dp)
-                    .navigationBarsPadding()
-            )
-        }
-    }
-
     fun triggerManualApply() {
         val port = portInput.toIntOrNull()
         if (port == null || port <= 0 || port > 65535) {
@@ -479,6 +464,10 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 .putBoolean("ss_ut_slot_1", true)
                 .putBoolean("show_ims_slot_0", true)
                 .putBoolean("show_ims_slot_1", true)
+                .putBoolean("show_lte_plus_slot_0", true)
+                .putBoolean("show_lte_plus_slot_1", true)
+                .putBoolean("show_vowifi_spn_slot_0", true)
+                .putBoolean("show_vowifi_spn_slot_1", true)
                 .putBoolean("allow_apn_slot_0", false)
                 .putBoolean("allow_apn_slot_1", false)
                 .putBoolean("cross_sim_slot_0", false)
@@ -512,6 +501,28 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     isInstrumenting.set(false)
                     Toast.makeText(context, context.getString(R.string.restore_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
                 }
+            )
+        }
+    }
+
+    if (showWirelessDebugSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showWirelessDebugSheet = false },
+            sheetState = sheetState,
+        ) {
+            WirelessDebugSetupPanel(
+                portInput = portInput,
+                onPortInputChange = { portInput = it },
+                isWifiConnected = isWifiConnected.value,
+                isAuthorized = isAuthorized.value,
+                isApplying = isApplying,
+                onApplyClick = { triggerManualApply() },
+                onRestoreClick = { triggerManualRestore() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding()
             )
         }
     }
@@ -558,12 +569,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
             contentPadding = PaddingValues(vertical = 16.dp),
         ) {
             item {
-                Text(
-                    text = stringResource(R.string.subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
+                SimStatusOverview(recheckSignal = recheckSignal)
             }
 
             item {
@@ -576,20 +582,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
             item {
                 ConfigPanel(
                     slotIndex = selectedSimSlot,
-                    recheckSignal = recheckSignal,
                     onConfigChanged = {},
-                )
-            }
-
-            item {
-                ActivationCard(
-                    recheckSignal = recheckSignal,
-                    portInput = portInput,
-                    isApplying = isApplying,
-                    isAuthorized = isAuthorized.value,
-                    onApplyClick = { triggerManualApply() },
-                    onRestoreClick = { triggerManualRestore() },
-                    onOpenSetup = { showWirelessDebugSheet = true },
                 )
             }
         }
@@ -620,10 +613,88 @@ fun SimSelectorTabs(
 }
 
 @Composable
+fun SimStatusOverview(recheckSignal: MutableState<Long>) {
+    val context = LocalContext.current
+    var slot0Active by remember { mutableStateOf(false) }
+    var slot1Active by remember { mutableStateOf(false) }
+    var slot0Applied by remember { mutableStateOf(false) }
+    var slot1Applied by remember { mutableStateOf(false) }
+    var slot0Carrier by remember { mutableStateOf(CarrierInfo.getCarrierLabel(context, 0)) }
+    var slot1Carrier by remember { mutableStateOf(CarrierInfo.getCarrierLabel(context, 1)) }
+
+    val signalValue = recheckSignal.value
+    LaunchedEffect(signalValue) {
+        slot0Active = readSlotBoolean(context, "ims_status_0.txt")
+        slot1Active = readSlotBoolean(context, "ims_status_1.txt")
+        slot0Applied = readSlotBoolean(context, "config_applied_0.txt")
+        slot1Applied = readSlotBoolean(context, "config_applied_1.txt")
+        slot0Carrier = CarrierInfo.getCarrierLabel(context, 0)
+        slot1Carrier = CarrierInfo.getCarrierLabel(context, 1)
+    }
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.sim_status_overview),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SimStatusTile(
+                    modifier = Modifier.weight(1f),
+                    title = slot0Carrier,
+                    configLabel = if (slot0Applied) {
+                        stringResource(R.string.app_optimized)
+                    } else {
+                        stringResource(R.string.system_default)
+                    },
+                    configTone = if (slot0Applied) StatusTone.Success else StatusTone.Neutral,
+                    imsLabel = if (slot0Active) {
+                        stringResource(R.string.ims_registered_short)
+                    } else {
+                        stringResource(R.string.ims_not_registered_short)
+                    },
+                    imsTone = if (slot0Active) StatusTone.Success else StatusTone.Error,
+                )
+                SimStatusTile(
+                    modifier = Modifier.weight(1f),
+                    title = slot1Carrier,
+                    configLabel = if (slot1Applied) {
+                        stringResource(R.string.app_optimized)
+                    } else {
+                        stringResource(R.string.system_default)
+                    },
+                    configTone = if (slot1Applied) StatusTone.Success else StatusTone.Neutral,
+                    imsLabel = if (slot1Active) {
+                        stringResource(R.string.ims_registered_short)
+                    } else {
+                        stringResource(R.string.ims_not_registered_short)
+                    },
+                    imsTone = if (slot1Active) StatusTone.Success else StatusTone.Error,
+                )
+            }
+        }
+    }
+}
+
+private fun readSlotBoolean(context: Context, fileName: String): Boolean {
+    return try {
+        java.io.File(context.filesDir, fileName).readText().trim().toBoolean()
+    } catch (e: Exception) {
+        false
+    }
+}
+
+@Composable
 fun ConfigPanel(
     slotIndex: Int,
-    recheckSignal: MutableState<Long>,
-    onConfigChanged: () -> Unit
+    onConfigChanged: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = remember(slotIndex) {
@@ -637,35 +708,13 @@ fun ConfigPanel(
     var wfcRoamingEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("wfc_roaming_slot_$slotIndex", true)) }
     var ssUtEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("ss_ut_slot_$slotIndex", true)) }
     var allowApnEdit by remember(slotIndex) { mutableStateOf(prefs.getBoolean("allow_apn_slot_$slotIndex", false)) } // Default false
+    var showLtePlus by remember(slotIndex) { mutableStateOf(prefs.getBoolean("show_lte_plus_slot_$slotIndex", true)) }
+    var showVowifiSpn by remember(slotIndex) { mutableStateOf(prefs.getBoolean("show_vowifi_spn_slot_$slotIndex", true)) }
     var applyOnBoot by remember(slotIndex) { mutableStateOf(VolteSettings.isApplyOnBoot(prefs, slotIndex)) }
-    
-    // Load cached IMS registration status from status file updated by PC run
-    var imsRegistered by remember(slotIndex) { mutableStateOf(false) }
-    var configApplied by remember(slotIndex) { mutableStateOf(false) }
-    
-    val signalValue = recheckSignal.value
-    LaunchedEffect(slotIndex, signalValue) {
-        val statusFile = java.io.File(context.filesDir, "ims_status_$slotIndex.txt")
-        imsRegistered = if (statusFile.exists()) {
-            try {
-                statusFile.readText().trim().toBoolean()
-            } catch (e: Exception) {
-                prefs.getBoolean("ims_registered_slot_$slotIndex", false)
-            }
-        } else {
-            prefs.getBoolean("ims_registered_slot_$slotIndex", false)
-        }
+    var carrierLabel by remember(slotIndex) { mutableStateOf(CarrierInfo.getCarrierLabel(context, slotIndex)) }
 
-        val appliedFile = java.io.File(context.filesDir, "config_applied_$slotIndex.txt")
-        configApplied = if (appliedFile.exists()) {
-            try {
-                appliedFile.readText().trim().toBoolean()
-            } catch (e: Exception) {
-                false
-            }
-        } else {
-            false
-        }
+    LaunchedEffect(slotIndex) {
+        carrierLabel = CarrierInfo.getCarrierLabel(context, slotIndex)
     }
 
     ElevatedCard(
@@ -673,32 +722,11 @@ fun ConfigPanel(
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    text = stringResource(R.string.carrier_settings_slot, slotIndex + 1),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusChip(
-                        label = if (configApplied) {
-                            stringResource(R.string.config_applied)
-                        } else {
-                            stringResource(R.string.config_system_default)
-                        },
-                        tone = if (configApplied) StatusTone.Success else StatusTone.Neutral,
-                    )
-                    StatusChip(
-                        label = if (imsRegistered) {
-                            stringResource(R.string.ims_registered)
-                        } else {
-                            stringResource(R.string.ims_not_registered)
-                        },
-                        tone = if (imsRegistered) StatusTone.Success else StatusTone.Error,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.carrier_settings_named, carrierLabel),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) { 
                 voLteEnabled = it
@@ -725,6 +753,25 @@ fun ConfigPanel(
                 prefs.edit().putBoolean("ss_ut_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text(
+                text = stringResource(R.string.display_at_carrier_header),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            ToggleRow(stringResource(R.string.show_lte_plus_title), stringResource(R.string.show_lte_plus_desc), showLtePlus) {
+                showLtePlus = it
+                prefs.edit().putBoolean("show_lte_plus_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
+                onConfigChanged()
+            }
+            ToggleRow(stringResource(R.string.show_vowifi_spn_title), stringResource(R.string.show_vowifi_spn_desc), showVowifiSpn) {
+                showVowifiSpn = it
+                prefs.edit().putBoolean("show_vowifi_spn_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
+                onConfigChanged()
+            }
+
             ToggleRow(stringResource(R.string.apply_on_boot_title), stringResource(R.string.apply_on_boot_desc), applyOnBoot) {
                 applyOnBoot = it
                 VolteSettings.setApplyOnBoot(prefs, slotIndex, it)
@@ -932,12 +979,19 @@ fun WirelessDebugSetupPanel(
     onPortInputChange: (String) -> Unit,
     isWifiConnected: Boolean,
     isAuthorized: Boolean,
-    modifier: Modifier = Modifier
+    isApplying: Boolean,
+    onApplyClick: () -> Unit,
+    onRestoreClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     var showManualPorts by remember { mutableStateOf(false) }
+    val hasResolvedPort = portInput.isNotEmpty() && isAuthorized
+    val scrollState = rememberScrollState()
 
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier.verticalScroll(scrollState),
+    ) {
         Text(
             stringResource(R.string.wireless_debug_activation),
             style = MaterialTheme.typography.titleLarge,
@@ -1052,186 +1106,86 @@ fun WirelessDebugSetupPanel(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
         }
-    }
-}
 
-@Composable
-fun ActivationCard(
-    recheckSignal: MutableState<Long>,
-    portInput: String,
-    isApplying: Boolean,
-    isAuthorized: Boolean,
-    onApplyClick: () -> Unit,
-    onRestoreClick: () -> Unit,
-    onOpenSetup: () -> Unit
-) {
-    val context = LocalContext.current
-    var slot0Active by remember { mutableStateOf(false) }
-    var slot1Active by remember { mutableStateOf(false) }
-    var slot0Applied by remember { mutableStateOf(false) }
-    var slot1Applied by remember { mutableStateOf(false) }
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(16.dp))
 
-    val signalValue = recheckSignal.value
-    LaunchedEffect(signalValue) {
-        slot0Active = try {
-            java.io.File(context.filesDir, "ims_status_0.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot1Active = try {
-            java.io.File(context.filesDir, "ims_status_1.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot0Applied = try {
-            java.io.File(context.filesDir, "config_applied_0.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot1Applied = try {
-            java.io.File(context.filesDir, "config_applied_1.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    val hasResolvedPort = portInput.isNotEmpty() && isAuthorized
-
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.step3_activate_title),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                StatusChip(
-                    label = if (hasResolvedPort) {
-                        stringResource(R.string.adb_status_ready)
-                    } else {
-                        stringResource(R.string.adb_status_not_ready)
-                    },
-                    tone = if (hasResolvedPort) StatusTone.Success else StatusTone.Warning,
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                stringResource(R.string.step3_activate_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                stringResource(R.string.step3_activate_title),
+                style = MaterialTheme.typography.titleMedium,
             )
-
-            if (!hasResolvedPort) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.wireless_debug_setup_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.clickable { onOpenSetup() },
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SimStatusTile(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.sim1_call_config),
-                    configLabel = if (slot0Applied) {
-                        stringResource(R.string.app_optimized)
-                    } else {
-                        stringResource(R.string.system_default)
-                    },
-                    configTone = if (slot0Applied) StatusTone.Success else StatusTone.Neutral,
-                    imsLabel = if (slot0Active) {
-                        stringResource(R.string.ims_registered_short)
-                    } else {
-                        stringResource(R.string.ims_not_registered_short)
-                    },
-                    imsTone = if (slot0Active) StatusTone.Success else StatusTone.Error,
-                )
-                SimStatusTile(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.sim2_call_config),
-                    configLabel = if (slot1Applied) {
-                        stringResource(R.string.app_optimized)
-                    } else {
-                        stringResource(R.string.system_default)
-                    },
-                    configTone = if (slot1Applied) StatusTone.Success else StatusTone.Neutral,
-                    imsLabel = if (slot1Active) {
-                        stringResource(R.string.ims_registered_short)
-                    } else {
-                        stringResource(R.string.ims_not_registered_short)
-                    },
-                    imsTone = if (slot1Active) StatusTone.Success else StatusTone.Error,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (hasResolvedPort) {
-                    Button(
-                        onClick = onApplyClick,
-                        enabled = !isApplying,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        if (isApplying) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.one_tap_activate))
-                        }
-                    }
+            StatusChip(
+                label = if (hasResolvedPort) {
+                    stringResource(R.string.adb_status_ready)
                 } else {
-                    FilledTonalButton(
-                        onClick = onOpenSetup,
-                        enabled = !isApplying,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.waiting_for_enable))
-                    }
-                }
+                    stringResource(R.string.adb_status_not_ready)
+                },
+                tone = if (hasResolvedPort) StatusTone.Success else StatusTone.Warning,
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.step3_activate_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
-                OutlinedButton(
-                    onClick = onRestoreClick,
-                    enabled = !isApplying,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(
+                onClick = onApplyClick,
+                enabled = !isApplying && hasResolvedPort,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isApplying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.one_tap_restore))
+                    Text(
+                        if (hasResolvedPort) {
+                            stringResource(R.string.one_tap_activate)
+                        } else {
+                            stringResource(R.string.waiting_for_enable)
+                        },
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.ims_status_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-            )
+            OutlinedButton(
+                onClick = onRestoreClick,
+                enabled = !isApplying && hasResolvedPort,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.one_tap_restore))
+            }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.ims_status_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+        )
     }
 }
 
@@ -1259,6 +1213,8 @@ private fun SimStatusTile(
                 title,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
             StatusChip(label = configLabel, tone = configTone)

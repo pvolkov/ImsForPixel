@@ -35,18 +35,20 @@
     <string name="developer_options_not_found">Параметры разработчика не найдены</string>
 
     <!-- Main screen -->
-    <string name="subtitle">VoLTE/VoNR без root</string>
     <string name="sim_card_1">SIM-карта 1</string>
     <string name="sim_card_2">SIM-карта 2</string>
+    <string name="sim_slot_fallback">SIM %1$d</string>
 
     <!-- Config panel -->
     <string name="carrier_settings_slot">Настройки оператора (слот %1$d)</string>
+    <string name="carrier_settings_named">Настройки: %1$s</string>
+    <string name="display_at_carrier_header">Отображение у оператора</string>
     <string name="config_applied">Конфиг: применён</string>
     <string name="config_system_default">Конфиг: по умолчанию</string>
     <string name="ims_registered">IMS: зарегистрирован</string>
     <string name="ims_not_registered">IMS: не зарегистрирован</string>
     <string name="volte_title">VoLTE</string>
-    <string name="volte_desc">Голосовые звонки через сеть 4G/LTE</string>
+    <string name="volte_desc">Голосовые звонки через сеть 4G/LTE+</string>
     <string name="vonr_title">VoNR (5G)</string>
     <string name="vonr_desc">Голосовые звонки в сети 5G SA</string>
     <string name="vowifi_title">VoWiFi</string>
@@ -57,6 +59,10 @@
     <string name="ss_ut_desc">Переадресация, ожидание вызова и др.</string>
     <string name="apply_on_boot_title">Применять при загрузке</string>
     <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки</string>
+    <string name="show_lte_plus_title">Иконка LTE+</string>
+    <string name="show_lte_plus_desc">Показывать LTE+ вместо LTE в строке состояния при хорошем сигнале</string>
+    <string name="show_vowifi_spn_title">Метка VoWiFi</string>
+    <string name="show_vowifi_spn_desc">Показывать «VoWiFi» рядом с названием оператора при звонках через Wi‑Fi</string>
 
     <!-- Wireless debugging card -->
     <string name="wireless_debug_activation">Активация беспроводной отладки</string>
@@ -86,7 +92,8 @@
     <string name="hide_advanced">Скрыть расширенные настройки</string>
     <string name="show_advanced">Показать расширенные настройки</string>
     <string name="adb_port_label">Порт подключения (ADB)</string>
-    <string name="wireless_debug_settings_cd">Настройки беспроводной отладки</string>
+    <string name="wireless_debug_settings_cd">Настройки и активация</string>
+    <string name="sim_status_overview">Статус SIM-карт</string>
     <string name="wireless_debug_setup_hint">Настройте беспроводную отладку через ⚙️ вверху справа</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>

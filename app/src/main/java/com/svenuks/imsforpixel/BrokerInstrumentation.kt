@@ -143,6 +143,11 @@ class BrokerInstrumentation : Instrumentation() {
         for (subInfo in activeSubscriptions) {
             val subId = subInfo.subscriptionId
             val slotIndex = subInfo.simSlotIndex
+            CarrierInfo.cacheCarrierName(
+                context,
+                slotIndex,
+                subInfo.carrierName?.toString() ?: subInfo.displayName?.toString(),
+            )
             val isImsRegistered = checkImsRegistered(subId)
             Log.d(TAG, "QueryStatusOnly: SIM slot $slotIndex IMS Registered: $isImsRegistered")
             
@@ -197,6 +202,12 @@ class BrokerInstrumentation : Instrumentation() {
             val slotIndex = subInfo.simSlotIndex
             Log.d(TAG, "Processing SIM slot $slotIndex (SubID $subId)")
 
+            CarrierInfo.cacheCarrierName(
+                context,
+                slotIndex,
+                subInfo.carrierName?.toString() ?: subInfo.displayName?.toString(),
+            )
+
             val clear = if (hasClearArg) {
                 clearArg
             } else {
@@ -230,6 +241,8 @@ class BrokerInstrumentation : Instrumentation() {
                 val wfcRoaming = sharedPrefs.getBoolean("wfc_roaming_slot_$slotIndex", true)
                 val ssUt = sharedPrefs.getBoolean("ss_ut_slot_$slotIndex", true)
                 val showIms = sharedPrefs.getBoolean("show_ims_slot_$slotIndex", true)
+                val showLtePlus = sharedPrefs.getBoolean("show_lte_plus_slot_$slotIndex", true)
+                val showVowifiSpn = sharedPrefs.getBoolean("show_vowifi_spn_slot_$slotIndex", true)
                 val allowApn = sharedPrefs.getBoolean("allow_apn_slot_$slotIndex", false)
                 val bundle = PersistableBundle()
                 // VoLTE enabling & provisioning overrides
@@ -239,6 +252,7 @@ class BrokerInstrumentation : Instrumentation() {
                 bundle.putBoolean("editable_enhanced_4g_lte_bool", volte)
                 bundle.putBoolean("carrier_volte_provisioned_bool", volte)
                 bundle.putBoolean("carrier_volte_provisioning_required_bool", false)
+                bundle.putBoolean("hide_lte_plus_data_icon_bool", !showLtePlus)
 
                 // VoNR (5G Calling) overrides
                 bundle.putBoolean("vonr_enabled_bool", vonr)
@@ -251,10 +265,13 @@ class BrokerInstrumentation : Instrumentation() {
                 bundle.putBoolean("editable_wfc_mode_bool", vowifi)
                 bundle.putBoolean("editable_wfc_roaming_mode_bool", vowifi)
                 bundle.putBoolean("carrier_default_wfc_ims_roaming_enabled_bool", wfcRoaming)
-                if (vowifi) {
-                    // Index 6: "%s VoWifi" — shown in status bar when Wi-Fi calling is active
+                if (vowifi && showVowifiSpn) {
+                    // Index 6: "%s VoWifi" — shown next to operator name when Wi-Fi calling is active
                     bundle.putInt("wfc_spn_format_idx_int", 6)
                     bundle.putInt("wfc_data_spn_format_idx_int", 6)
+                } else {
+                    bundle.putInt("wfc_spn_format_idx_int", 0)
+                    bundle.putInt("wfc_data_spn_format_idx_int", 0)
                 }
 
                 // Other settings
