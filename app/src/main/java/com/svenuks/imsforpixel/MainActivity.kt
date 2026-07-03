@@ -7,32 +7,24 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import com.svenuks.imsforpixel.ui.components.StatusChip
+import com.svenuks.imsforpixel.ui.components.StatusTone
+import com.svenuks.imsforpixel.ui.theme.ImsForPixelTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +90,7 @@ class MainActivity : ComponentActivity() {
     private var pairingReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         // Initialize defaults: enable everything except APN editing and Cross-SIM Calling, both of which are hidden and disabled by default.
@@ -147,8 +140,10 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val recheckSignal = remember { mutableStateOf(System.currentTimeMillis()) }
-            MainScreen(recheckSignal = recheckSignal)
+            ImsForPixelTheme {
+                val recheckSignal = remember { mutableStateOf(System.currentTimeMillis()) }
+                MainScreen(recheckSignal = recheckSignal)
+            }
         }
     }
 
@@ -300,18 +295,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Sleek Color Palette
-val PrimaryGradStart = Color(0xFF1E3C72)
-val PrimaryGradEnd = Color(0xFF2A5298)
-val BackgroundDark = Color(0xFF0F172A)
-val CardBackground = Color(0xFF1E293B)
-val BorderColor = Color(0xFF334155)
-val AccentGreen = Color(0xFF10B981)
-val AccentOrange = Color(0xFFF59E0B)
-val AccentRed = Color(0xFFEF4444)
-val TextLight = Color(0xFFF8FAFC)
-val TextMuted = Color(0xFF94A3B8)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(System.currentTimeMillis()) }) {
@@ -405,8 +388,6 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         ModalBottomSheet(
             onDismissRequest = { showWirelessDebugSheet = false },
             sheetState = sheetState,
-            containerColor = CardBackground,
-            contentColor = TextLight
         ) {
             WirelessDebugSetupPanel(
                 portInput = portInput,
@@ -535,130 +516,105 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         }
     }
 
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = PrimaryGradEnd,
-            background = BackgroundDark,
-            surface = CardBackground,
-            onPrimary = TextLight,
-            onBackground = TextLight,
-            onSurface = TextLight
-        )
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            stringResource(R.string.app_name),
-                            fontWeight = FontWeight.Bold,
-                            color = TextLight
-                        )
-                    },
-                    actions = {
-                        val setupReady = isWifiConnected.value && isAuthorized.value && portInput.isNotEmpty()
-                        BadgedBox(
-                            badge = {
-                                if (!setupReady) {
-                                    Badge(containerColor = AccentOrange)
-                                }
-                            }
-                        ) {
-                            IconButton(onClick = { showWirelessDebugSheet = true }) {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = stringResource(R.string.wireless_debug_settings_cd),
-                                    tint = TextLight
-                                )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+                actions = {
+                    val setupReady = isWifiConnected.value && isAuthorized.value && portInput.isNotEmpty()
+                    BadgedBox(
+                        badge = {
+                            if (!setupReady) {
+                                Badge()
                             }
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = CardBackground
-                    )
+                    ) {
+                        IconButton(onClick = { showWirelessDebugSheet = true }) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.wireless_debug_settings_cd),
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
-            },
-            containerColor = BackgroundDark
-        ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Description Subtitle
-                item {
-                    Text(
-                        text = stringResource(R.string.subtitle),
-                        color = TextMuted,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
+            }
 
-                // SIM selector tabs
-                item {
-                    SimSelectorTabs(
-                        selectedSlot = selectedSimSlot,
-                        onSlotSelected = { selectedSimSlot = it }
-                    )
-                }
+            item {
+                SimSelectorTabs(
+                    selectedSlot = selectedSimSlot,
+                    onSlotSelected = { selectedSimSlot = it },
+                )
+            }
 
-                // Config Panel for Selected Slot
-                item {
-                    ConfigPanel(
-                        slotIndex = selectedSimSlot,
-                        recheckSignal = recheckSignal,
-                        onConfigChanged = {}
-                    )
-                }
+            item {
+                ConfigPanel(
+                    slotIndex = selectedSimSlot,
+                    recheckSignal = recheckSignal,
+                    onConfigChanged = {},
+                )
+            }
 
-                item {
-                    ActivationCard(
-                        recheckSignal = recheckSignal,
-                        portInput = portInput,
-                        isApplying = isApplying,
-                        isAuthorized = isAuthorized.value,
-                        onApplyClick = { triggerManualApply() },
-                        onRestoreClick = { triggerManualRestore() },
-                        onOpenSetup = { showWirelessDebugSheet = true }
-                    )
-                }
+            item {
+                ActivationCard(
+                    recheckSignal = recheckSignal,
+                    portInput = portInput,
+                    isApplying = isApplying,
+                    isAuthorized = isAuthorized.value,
+                    onApplyClick = { triggerManualApply() },
+                    onRestoreClick = { triggerManualRestore() },
+                    onOpenSetup = { showWirelessDebugSheet = true },
+                )
             }
         }
     }
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimSelectorTabs(
     selectedSlot: Int,
-    onSlotSelected: (Int) -> Unit
+    onSlotSelected: (Int) -> Unit,
 ) {
-    TabRow(
-        selectedTabIndex = selectedSlot,
-        containerColor = CardBackground,
-        contentColor = TextLight,
-        indicator = { tabPositions ->
-            TabRowDefaults.SecondaryIndicator(
-                Modifier.tabIndicatorOffset(tabPositions[selectedSlot]),
-                color = PrimaryGradEnd
-            )
-        },
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
-    ) {
-        Tab(
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SegmentedButton(
             selected = selectedSlot == 0,
             onClick = { onSlotSelected(0) },
-            text = { Text(stringResource(R.string.sim_card_1), fontWeight = FontWeight.Bold) }
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            label = { Text(stringResource(R.string.sim_card_1)) },
         )
-        Tab(
+        SegmentedButton(
             selected = selectedSlot == 1,
             onClick = { onSlotSelected(1) },
-            text = { Text(stringResource(R.string.sim_card_2), fontWeight = FontWeight.Bold) }
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            label = { Text(stringResource(R.string.sim_card_2)) },
         )
     }
 }
@@ -712,56 +668,38 @@ fun ConfigPanel(
         }
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, BorderColor, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
                     text = stringResource(R.string.carrier_settings_slot, slotIndex + 1),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = TextLight
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (configApplied) AccentGreen.copy(alpha = 0.15f) else BorderColor.copy(alpha = 0.3f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (configApplied) stringResource(R.string.config_applied) else stringResource(R.string.config_system_default),
-                            color = if (configApplied) AccentGreen else TextMuted,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 10.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (imsRegistered) AccentGreen.copy(alpha = 0.15f) else AccentRed.copy(alpha = 0.15f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (imsRegistered) stringResource(R.string.ims_registered) else stringResource(R.string.ims_not_registered),
-                            color = if (imsRegistered) AccentGreen else AccentRed,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 10.sp
-                        )
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusChip(
+                        label = if (configApplied) {
+                            stringResource(R.string.config_applied)
+                        } else {
+                            stringResource(R.string.config_system_default)
+                        },
+                        tone = if (configApplied) StatusTone.Success else StatusTone.Neutral,
+                    )
+                    StatusChip(
+                        label = if (imsRegistered) {
+                            stringResource(R.string.ims_registered)
+                        } else {
+                            stringResource(R.string.ims_not_registered)
+                        },
+                        tone = if (imsRegistered) StatusTone.Success else StatusTone.Error,
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = BorderColor)
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Toggles
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) { 
                 voLteEnabled = it
                 prefs.edit().putBoolean("volte_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
@@ -801,29 +739,27 @@ fun ToggleRow(
     title: String,
     description: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(description, color = TextMuted, fontSize = 11.sp)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = TextLight,
-                checkedTrackColor = PrimaryGradEnd
+    ListItem(
+        headlineContent = {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+        },
+        supportingContent = {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        )
-    }
+        },
+        trailingContent = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+            )
+        },
+        modifier = Modifier.clickable { onCheckedChange(!checked) },
+    )
 }
 
 @Composable
@@ -1004,85 +940,72 @@ fun WirelessDebugSetupPanel(
     Column(modifier = modifier) {
         Text(
             stringResource(R.string.wireless_debug_activation),
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = TextLight
+            style = MaterialTheme.typography.titleLarge,
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.step1_wifi_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
-                Text(stringResource(R.string.step1_wifi_desc), fontSize = 10.sp, color = TextMuted)
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(if (isWifiConnected) AccentGreen.copy(alpha = 0.15f) else AccentRed.copy(alpha = 0.15f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
+        ListItem(
+            headlineContent = {
                 Text(
-                    text = if (isWifiConnected) stringResource(R.string.connected) else stringResource(R.string.not_connected),
-                    color = if (isWifiConnected) AccentGreen else AccentRed,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp
+                    stringResource(R.string.step1_wifi_title),
+                    style = MaterialTheme.typography.titleSmall,
                 )
-            }
-        }
+            },
+            supportingContent = {
+                Text(
+                    stringResource(R.string.step1_wifi_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailingContent = {
+                StatusChip(
+                    label = if (isWifiConnected) {
+                        stringResource(R.string.connected)
+                    } else {
+                        stringResource(R.string.not_connected)
+                    },
+                    tone = if (isWifiConnected) StatusTone.Success else StatusTone.Error,
+                )
+            },
+        )
 
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = BorderColor)
-        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.step2_pairing_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+        ListItem(
+            headlineContent = {
+                Text(
+                    stringResource(R.string.step2_pairing_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            },
+            supportingContent = {
                 Text(
                     text = when {
                         isAuthorized -> stringResource(R.string.step2_authorized)
                         portInput.isNotEmpty() -> stringResource(R.string.step2_needs_pairing)
                         else -> stringResource(R.string.step2_enable_in_settings)
                     },
-                    fontSize = 10.sp,
-                    color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        when {
-                            isAuthorized -> AccentGreen.copy(alpha = 0.15f)
-                            portInput.isNotEmpty() -> AccentOrange.copy(alpha = 0.15f)
-                            else -> BorderColor.copy(alpha = 0.3f)
-                        }
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = when {
+            },
+            trailingContent = {
+                StatusChip(
+                    label = when {
                         isAuthorized -> stringResource(R.string.authorized)
                         portInput.isNotEmpty() -> stringResource(R.string.not_paired)
                         else -> stringResource(R.string.not_connected)
                     },
-                    color = when {
-                        isAuthorized -> AccentGreen
-                        portInput.isNotEmpty() -> AccentOrange
-                        else -> TextMuted
+                    tone = when {
+                        isAuthorized -> StatusTone.Success
+                        portInput.isNotEmpty() -> StatusTone.Warning
+                        else -> StatusTone.Neutral
                     },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp
                 )
-            }
-        }
+            },
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(
             onClick = {
@@ -1098,39 +1021,35 @@ fun WirelessDebugSetupPanel(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextLight),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)
         ) {
-            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(stringResource(R.string.open_wireless_debugging), fontSize = 11.sp)
+            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.open_wireless_debugging))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = { showManualPorts = !showManualPorts },
+            modifier = Modifier.align(Alignment.End),
         ) {
             Text(
-                text = if (showManualPorts) stringResource(R.string.hide_advanced) else stringResource(R.string.show_advanced),
-                color = TextMuted,
-                fontSize = 10.sp,
-                modifier = Modifier
-                    .clickable { showManualPorts = !showManualPorts }
-                    .padding(4.dp)
+                text = if (showManualPorts) {
+                    stringResource(R.string.hide_advanced)
+                } else {
+                    stringResource(R.string.show_advanced)
+                },
+                style = MaterialTheme.typography.labelMedium,
             )
         }
 
         if (showManualPorts) {
-            Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = portInput,
                 onValueChange = onPortInputChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.adb_port_label), fontSize = 9.sp) },
+                label = { Text(stringResource(R.string.adb_port_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
             )
         }
     }
@@ -1178,129 +1097,116 @@ fun ActivationCard(
 
     val hasResolvedPort = portInput.isNotEmpty() && isAuthorized
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, BorderColor, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     stringResource(R.string.step3_activate_title),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = TextLight
+                    style = MaterialTheme.typography.titleMedium,
                 )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (hasResolvedPort) AccentGreen.copy(alpha = 0.15f) else AccentOrange.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (hasResolvedPort) stringResource(R.string.adb_status_ready) else stringResource(R.string.adb_status_not_ready),
-                        color = if (hasResolvedPort) AccentGreen else AccentOrange,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    )
-                }
+                StatusChip(
+                    label = if (hasResolvedPort) {
+                        stringResource(R.string.adb_status_ready)
+                    } else {
+                        stringResource(R.string.adb_status_not_ready)
+                    },
+                    tone = if (hasResolvedPort) StatusTone.Success else StatusTone.Warning,
+                )
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(stringResource(R.string.step3_activate_desc), fontSize = 10.sp, color = TextMuted)
+            Text(
+                stringResource(R.string.step3_activate_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             if (!hasResolvedPort) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.wireless_debug_setup_hint),
-                    fontSize = 10.sp,
-                    color = AccentOrange,
-                    modifier = Modifier.clickable { onOpenSetup() }
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.clickable { onOpenSetup() },
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark.copy(alpha = 0.5f))
-                        .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.sim1_call_config), fontSize = 10.sp, color = TextMuted)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = if (slot0Applied) stringResource(R.string.app_optimized) else stringResource(R.string.system_default),
-                            color = if (slot0Applied) AccentGreen else TextMuted,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                        Spacer(modifier = Modifier.height(1.dp))
-                        Text(
-                            text = if (slot0Active) stringResource(R.string.ims_registered_short) else stringResource(R.string.ims_not_registered_short),
-                            color = if (slot0Active) AccentGreen else AccentRed,
-                            fontSize = 9.sp
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BackgroundDark.copy(alpha = 0.5f))
-                        .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.sim2_call_config), fontSize = 10.sp, color = TextMuted)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = if (slot1Applied) stringResource(R.string.app_optimized) else stringResource(R.string.system_default),
-                            color = if (slot1Applied) AccentGreen else TextMuted,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                        Spacer(modifier = Modifier.height(1.dp))
-                        Text(
-                            text = if (slot1Active) stringResource(R.string.ims_registered_short) else stringResource(R.string.ims_not_registered_short),
-                            color = if (slot1Active) AccentGreen else AccentRed,
-                            fontSize = 9.sp
-                        )
-                    }
-                }
+                SimStatusTile(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.sim1_call_config),
+                    configLabel = if (slot0Applied) {
+                        stringResource(R.string.app_optimized)
+                    } else {
+                        stringResource(R.string.system_default)
+                    },
+                    configTone = if (slot0Applied) StatusTone.Success else StatusTone.Neutral,
+                    imsLabel = if (slot0Active) {
+                        stringResource(R.string.ims_registered_short)
+                    } else {
+                        stringResource(R.string.ims_not_registered_short)
+                    },
+                    imsTone = if (slot0Active) StatusTone.Success else StatusTone.Error,
+                )
+                SimStatusTile(
+                    modifier = Modifier.weight(1f),
+                    title = stringResource(R.string.sim2_call_config),
+                    configLabel = if (slot1Applied) {
+                        stringResource(R.string.app_optimized)
+                    } else {
+                        stringResource(R.string.system_default)
+                    },
+                    configTone = if (slot1Applied) StatusTone.Success else StatusTone.Neutral,
+                    imsLabel = if (slot1Active) {
+                        stringResource(R.string.ims_registered_short)
+                    } else {
+                        stringResource(R.string.ims_not_registered_short)
+                    },
+                    imsTone = if (slot1Active) StatusTone.Success else StatusTone.Error,
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(
-                    onClick = onApplyClick,
-                    enabled = !isApplying,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (hasResolvedPort) AccentGreen else BorderColor)
-                ) {
-                    if (isApplying) {
-                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color.White, strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            if (hasResolvedPort) stringResource(R.string.one_tap_activate) else stringResource(R.string.waiting_for_enable),
-                            fontSize = 12.sp
-                        )
+                if (hasResolvedPort) {
+                    Button(
+                        onClick = onApplyClick,
+                        enabled = !isApplying,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (isApplying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.one_tap_activate))
+                        }
+                    }
+                } else {
+                    FilledTonalButton(
+                        onClick = onOpenSetup,
+                        enabled = !isApplying,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.waiting_for_enable))
                     }
                 }
 
@@ -1308,23 +1214,56 @@ fun ActivationCard(
                     onClick = onRestoreClick,
                     enabled = !isApplying,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentRed),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AccentRed.copy(alpha = 0.5f))
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(stringResource(R.string.one_tap_restore), fontSize = 12.sp)
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.one_tap_restore))
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.ims_status_hint),
-                fontSize = 10.sp,
-                color = AccentOrange,
-                modifier = Modifier.padding(horizontal = 2.dp),
-                maxLines = 2
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
             )
+        }
+    }
+}
+
+@Composable
+private fun SimStatusTile(
+    title: String,
+    configLabel: String,
+    configTone: StatusTone,
+    imsLabel: String,
+    imsTone: StatusTone,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            StatusChip(label = configLabel, tone = configTone)
+            Spacer(modifier = Modifier.height(4.dp))
+            StatusChip(label = imsLabel, tone = imsTone)
         }
     }
 }
