@@ -24,13 +24,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import org.lsposed.hiddenapibypass.HiddenApiBypass
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import kotlinx.coroutines.launch
@@ -40,11 +40,7 @@ import kotlinx.coroutines.withContext
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.content.Intent
-import okio.Path.Companion.toPath
 import com.flyfishxu.kadb.Kadb
-import com.flyfishxu.kadb.cert.KadbCert
-import com.flyfishxu.kadb.cert.KadbCertPolicy
-import com.flyfishxu.kadb.cert.OkioFilePrivateKeyStore
 
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
@@ -69,7 +65,7 @@ class MainActivity : ComponentActivity() {
     fun showImsStatusNotification(isActivate: Boolean) {
         val channelId = "ims_status_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(channelId, "IMS 激活状态", NotificationManager.IMPORTANCE_HIGH)
+            val ch = NotificationChannel(channelId, getString(R.string.ims_status_channel), NotificationManager.IMPORTANCE_HIGH)
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
         }
         // Read actual IMS status from files
@@ -77,17 +73,17 @@ class MainActivity : ComponentActivity() {
         val slot1 = try { java.io.File(filesDir, "ims_status_1.txt").readText().trim().toBoolean() } catch (e: Exception) { false }
         val anyRegistered = slot0 || slot1
         val title = if (isActivate) {
-            if (anyRegistered) "✅ VoLTE 激活成功" else "⚠️ VoLTE 激活完成"
+            if (anyRegistered) getString(R.string.volte_activate_success) else getString(R.string.volte_activate_done)
         } else {
-            "✅ 配置已恢复默认"
+            getString(R.string.config_restored_default)
         }
         val body = if (isActivate) {
             buildString {
-                if (slot0) append("SIM 1: IMS 已注册  ") else append("SIM 1: IMS 未注册  ")
-                if (slot1) append("SIM 2: IMS 已注册") else append("SIM 2: IMS 未注册")
+                if (slot0) append(getString(R.string.sim1_ims_registered)) else append(getString(R.string.sim1_ims_not_registered))
+                if (slot1) append(getString(R.string.sim2_ims_registered)) else append(getString(R.string.sim2_ims_not_registered))
             }
         } else {
-            "运营商覆盖配置已清除，请测试通话功能是否正常"
+            getString(R.string.carrier_override_cleared)
         }
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -103,30 +99,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        try {
-            HiddenApiBypass.addHiddenApiExemptions("L")
-            Log.d("IMSForSven", "Successfully applied HiddenApiBypass exemptions")
-        } catch (e: Exception) {
-            Log.e("IMSForSven", "Failed to apply HiddenApiBypass exemptions", e)
-        }
-
-        // Initialize KadbCert key store
-        try {
-            val privateKeyFile = java.io.File(filesDir, "kadb_private_key.pem")
-            val store = OkioFilePrivateKeyStore(
-                privateKeyFile.absolutePath.toPath()
-            )
-            KadbCert.configure(
-                store = store,
-                policy = KadbCertPolicy(),
-                additionalPrivateKeysPem = emptyList()
-            )
-            KadbCert.ensureReady()
-            Log.d("IMSForSven", "KadbCert configured successfully")
-        } catch (e: Exception) {
-            Log.e("IMSForSven", "Failed to configure KadbCert", e)
-        }
 
         // Initialize defaults: enable everything except APN editing and Cross-SIM Calling, both of which are hidden and disabled by default.
         val prefs = getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
@@ -202,7 +174,7 @@ class MainActivity : ComponentActivity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 showPairingNotification()
             } else {
-                Toast.makeText(this, "需要通知权限来在通知栏输入配对码", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.notification_permission_required), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -211,10 +183,10 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "pairing_channel",
-                "无线调试配对",
+                getString(R.string.pairing_channel),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "用于在系统设置页下拉通知栏快速输入无线调试配对码"
+                description = getString(R.string.pairing_channel_description)
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
@@ -224,7 +196,7 @@ class MainActivity : ComponentActivity() {
     private fun showPairingNotification() {
         createNotificationChannel()
         
-        val replyLabel = "请输入6位配对码"
+        val replyLabel = getString(R.string.pairing_code_hint)
         val remoteInput = androidx.core.app.RemoteInput.Builder("extra_pairing_code")
             .setLabel(replyLabel)
             .build()
@@ -248,7 +220,7 @@ class MainActivity : ComponentActivity() {
         
         val action = NotificationCompat.Action.Builder(
             android.R.drawable.ic_menu_send,
-            "发送配对码 (Send)",
+            getString(R.string.send_pairing_code),
             replyPendingIntent
         )
             .addRemoteInput(remoteInput)
@@ -256,8 +228,8 @@ class MainActivity : ComponentActivity() {
             
         val notification = NotificationCompat.Builder(this, "pairing_channel")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("无线调试配对")
-            .setContentText("💡请点击下方的【发送配对码】按钮输入6位数")
+            .setContentTitle(getString(R.string.pairing_channel))
+            .setContentText(getString(R.string.pairing_notification_body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setAutoCancel(false)
@@ -272,7 +244,7 @@ class MainActivity : ComponentActivity() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = NotificationCompat.Builder(this, "pairing_channel")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("无线调试配对")
+            .setContentTitle(getString(R.string.pairing_channel))
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -283,13 +255,13 @@ class MainActivity : ComponentActivity() {
     private fun handleNotificationPairing(code: String) {
         val port = pairingPort
         if (port == null) {
-            Toast.makeText(this, "未检测到系统配对端口，请确保系统配对弹窗处于打开状态！", Toast.LENGTH_LONG).show()
-            showPairingStatusNotification("配对失败：未检测到系统配对窗口端口")
+            Toast.makeText(this, getString(R.string.pairing_port_not_found_toast), Toast.LENGTH_LONG).show()
+            showPairingStatusNotification(getString(R.string.pairing_failed_no_port))
             return
         }
         
-        Toast.makeText(this, "正在后台配对设备...", Toast.LENGTH_SHORT).show()
-        showPairingStatusNotification("正在配对端口 $port...")
+        Toast.makeText(this, getString(R.string.pairing_in_background), Toast.LENGTH_SHORT).show()
+        showPairingStatusNotification(getString(R.string.pairing_port_progress, port))
 
         val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
         scope.launch {
@@ -303,13 +275,13 @@ class MainActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 result.fold(
                     onSuccess = {
-                        Toast.makeText(this@MainActivity, "通知配对成功！", Toast.LENGTH_LONG).show()
-                        showPairingStatusNotification("配对成功！请返回应用激活配置。")
+                        Toast.makeText(this@MainActivity, getString(R.string.pairing_success_toast), Toast.LENGTH_LONG).show()
+                        showPairingStatusNotification(getString(R.string.pairing_success_return))
                         onAuthStatusChanged?.invoke()
                     },
                     onFailure = { error ->
-                        Toast.makeText(this@MainActivity, "配对失败: ${error.message}", Toast.LENGTH_LONG).show()
-                        showPairingStatusNotification("配对失败: ${error.message}")
+                        Toast.makeText(this@MainActivity, getString(R.string.pairing_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
+                        showPairingStatusNotification(getString(R.string.pairing_failed, error.message ?: ""))
                     }
                 )
             }
@@ -421,7 +393,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
     fun triggerManualApply() {
         val port = portInput.toIntOrNull()
         if (port == null || port <= 0 || port > 65535) {
-            Toast.makeText(context, "请先开启无线调试服务", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -460,7 +432,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 },
                 onFailure = { error ->
                     isInstrumenting.set(false)
-                    Toast.makeText(context, "激活失败: ${error.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.activate_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
                 }
             )
         }
@@ -469,7 +441,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
     fun triggerManualRestore() {
         val port = portInput.toIntOrNull()
         if (port == null || port <= 0 || port > 65535) {
-            Toast.makeText(context, "请先开启无线调试服务", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -498,6 +470,8 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 .putBoolean("allow_apn_slot_1", false)
                 .putBoolean("cross_sim_slot_0", false)
                 .putBoolean("cross_sim_slot_1", false)
+                .putBoolean("apply_on_boot_slot_0", false)
+                .putBoolean("apply_on_boot_slot_1", false)
                 .commit()
 
             val result = withContext(Dispatchers.IO) {
@@ -523,7 +497,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 },
                 onFailure = { error ->
                     isInstrumenting.set(false)
-                    Toast.makeText(context, "恢复失败: ${error.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.restore_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
                 }
             )
         }
@@ -544,7 +518,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 TopAppBar(
                     title = {
                         Text(
-                            "IMS for Pixel",
+                            stringResource(R.string.app_name),
                             fontWeight = FontWeight.Bold,
                             color = TextLight
                         )
@@ -566,7 +540,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 // Description Subtitle
                 item {
                     Text(
-                        text = "免 Root 开启 VoLTE/VoNR 通话配置",
+                        text = stringResource(R.string.subtitle),
                         color = TextMuted,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -629,12 +603,12 @@ fun SimSelectorTabs(
         Tab(
             selected = selectedSlot == 0,
             onClick = { onSlotSelected(0) },
-            text = { Text("SIM 卡 1", fontWeight = FontWeight.Bold) }
+            text = { Text(stringResource(R.string.sim_card_1), fontWeight = FontWeight.Bold) }
         )
         Tab(
             selected = selectedSlot == 1,
             onClick = { onSlotSelected(1) },
-            text = { Text("SIM 卡 2", fontWeight = FontWeight.Bold) }
+            text = { Text(stringResource(R.string.sim_card_2), fontWeight = FontWeight.Bold) }
         )
     }
 }
@@ -657,6 +631,7 @@ fun ConfigPanel(
     var wfcRoamingEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("wfc_roaming_slot_$slotIndex", true)) }
     var ssUtEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("ss_ut_slot_$slotIndex", true)) }
     var allowApnEdit by remember(slotIndex) { mutableStateOf(prefs.getBoolean("allow_apn_slot_$slotIndex", false)) } // Default false
+    var applyOnBoot by remember(slotIndex) { mutableStateOf(VolteSettings.isApplyOnBoot(prefs, slotIndex)) }
     
     // Load cached IMS registration status from status file updated by PC run
     var imsRegistered by remember(slotIndex) { mutableStateOf(false) }
@@ -694,18 +669,14 @@ fun ConfigPanel(
         colors = CardDefaults.cardColors(containerColor = CardBackground)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "运营商参数设置 (插槽 ${slotIndex + 1})",
+                    text = stringResource(R.string.carrier_settings_slot, slotIndex + 1),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = TextLight
                 )
-                
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(
                         modifier = Modifier
@@ -714,7 +685,7 @@ fun ConfigPanel(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (configApplied) "配置:已应用" else "配置:系统默认",
+                            text = if (configApplied) stringResource(R.string.config_applied) else stringResource(R.string.config_system_default),
                             color = if (configApplied) AccentGreen else TextMuted,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 10.sp
@@ -728,7 +699,7 @@ fun ConfigPanel(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (imsRegistered) "IMS:已注册" else "IMS:未注册",
+                            text = if (imsRegistered) stringResource(R.string.ims_registered) else stringResource(R.string.ims_not_registered),
                             color = if (imsRegistered) AccentGreen else AccentRed,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 10.sp
@@ -741,29 +712,34 @@ fun ConfigPanel(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Toggles
-            ToggleRow("启用 VoLTE 通话 (VoLTE)", "允许通过 4G/LTE 网络进行语音通话", voLteEnabled) { 
+            ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) { 
                 voLteEnabled = it
                 prefs.edit().putBoolean("volte_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow("启用 5G 通话 (VoNR)", "启用 5G 独立组网语音通话支持 (VoNR)", voNrEnabled) { 
+            ToggleRow(stringResource(R.string.vonr_title), stringResource(R.string.vonr_desc), voNrEnabled) { 
                 voNrEnabled = it
                 prefs.edit().putBoolean("vonr_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow("启用 Wi-Fi 通话 (VoWiFi)", "信号不佳时允许通过 Wi-Fi 进行通话", voWifiEnabled) { 
+            ToggleRow(stringResource(R.string.vowifi_title), stringResource(R.string.vowifi_desc), voWifiEnabled) { 
                 voWifiEnabled = it
                 prefs.edit().putBoolean("vowifi_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow("启用 Wi-Fi 通话漫游", "在国际或漫游状态下保持 Wi-Fi 通话启用", wfcRoamingEnabled) { 
+            ToggleRow(stringResource(R.string.wfc_roaming_title), stringResource(R.string.wfc_roaming_desc), wfcRoamingEnabled) { 
                 wfcRoamingEnabled = it
                 prefs.edit().putBoolean("wfc_roaming_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow("启用补充业务 (UT)", "启用运营商呼叫转移、呼叫等待等补充网络设置", ssUtEnabled) { 
+            ToggleRow(stringResource(R.string.ss_ut_title), stringResource(R.string.ss_ut_desc), ssUtEnabled) { 
                 ssUtEnabled = it
                 prefs.edit().putBoolean("ss_ut_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
+                onConfigChanged()
+            }
+            ToggleRow(stringResource(R.string.apply_on_boot_title), stringResource(R.string.apply_on_boot_desc), applyOnBoot) {
+                applyOnBoot = it
+                VolteSettings.setApplyOnBoot(prefs, slotIndex, it)
                 onConfigChanged()
             }
         }
@@ -1019,7 +995,7 @@ fun LocalAdbCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "无线调试激活",
+                    stringResource(R.string.wireless_debug_activation),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = TextLight
@@ -1034,8 +1010,8 @@ fun LocalAdbCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("第一步：连接 Wi-Fi (必要前提)", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
-                    Text("启用无线调试需先确保手机已连接到 Wi-Fi 网络", fontSize = 10.sp, color = TextMuted)
+                    Text(stringResource(R.string.step1_wifi_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+                    Text(stringResource(R.string.step1_wifi_desc), fontSize = 10.sp, color = TextMuted)
                 }
                 Box(
                     modifier = Modifier
@@ -1044,7 +1020,7 @@ fun LocalAdbCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (isWifiConnected) "已连接" else "未连接",
+                        text = if (isWifiConnected) stringResource(R.string.connected) else stringResource(R.string.not_connected),
                         color = if (isWifiConnected) AccentGreen else AccentRed,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
@@ -1063,9 +1039,13 @@ fun LocalAdbCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("第二步：启用服务并配对", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+                    Text(stringResource(R.string.step2_pairing_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
                     Text(
-                        text = if (isAuthorized) "配对成功，已授权连接" else if (portInput.isNotEmpty()) "服务已开启 (需配对)" else "请在系统设置中开启无线调试",
+                        text = when {
+                            isAuthorized -> stringResource(R.string.step2_authorized)
+                            portInput.isNotEmpty() -> stringResource(R.string.step2_needs_pairing)
+                            else -> stringResource(R.string.step2_enable_in_settings)
+                        },
                         fontSize = 10.sp,
                         color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted
                     )
@@ -1077,7 +1057,11 @@ fun LocalAdbCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (isAuthorized) "已授权" else if (portInput.isNotEmpty()) "未配对" else "未连接",
+                        text = when {
+                            isAuthorized -> stringResource(R.string.authorized)
+                            portInput.isNotEmpty() -> stringResource(R.string.not_paired)
+                            else -> stringResource(R.string.not_connected)
+                        },
                         color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
@@ -1094,7 +1078,7 @@ fun LocalAdbCard(
                         try {
                             context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
                         } catch (e2: Exception) {
-                            Toast.makeText(context, "未找到开发者选项", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.developer_options_not_found), Toast.LENGTH_SHORT).show()
                         }
                     }
                 },
@@ -1104,7 +1088,7 @@ fun LocalAdbCard(
             ) {
                 Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("去开启无线调试", fontSize = 11.sp)
+                Text(stringResource(R.string.open_wireless_debugging), fontSize = 11.sp)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -1112,9 +1096,9 @@ fun LocalAdbCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Step 3: Activation & Status check
-            Text("第三步：一键激活配置", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+            Text(stringResource(R.string.step3_activate_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("将上方设置的参数应用到当前 SIM 卡中", fontSize = 10.sp, color = TextMuted)
+            Text(stringResource(R.string.step3_activate_desc), fontSize = 10.sp, color = TextMuted)
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -1130,17 +1114,17 @@ fun LocalAdbCard(
                         .padding(8.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text("SIM 卡 1 通话配置", fontSize = 10.sp, color = TextMuted)
+                        Text(stringResource(R.string.sim1_call_config), fontSize = 10.sp, color = TextMuted)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (slot0Applied) "App已优化" else "系统默认",
+                            text = if (slot0Applied) stringResource(R.string.app_optimized) else stringResource(R.string.system_default),
                             color = if (slot0Applied) AccentGreen else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
                         Spacer(modifier = Modifier.height(1.dp))
                         Text(
-                            text = if (slot0Active) "IMS已注册" else "IMS未注册",
+                            text = if (slot0Active) stringResource(R.string.ims_registered_short) else stringResource(R.string.ims_not_registered_short),
                             color = if (slot0Active) AccentGreen else AccentRed,
                             fontSize = 9.sp
                         )
@@ -1155,17 +1139,17 @@ fun LocalAdbCard(
                         .padding(8.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text("SIM 卡 2 通话配置", fontSize = 10.sp, color = TextMuted)
+                        Text(stringResource(R.string.sim2_call_config), fontSize = 10.sp, color = TextMuted)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (slot1Applied) "App已优化" else "系统默认",
+                            text = if (slot1Applied) stringResource(R.string.app_optimized) else stringResource(R.string.system_default),
                             color = if (slot1Applied) AccentGreen else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
                         Spacer(modifier = Modifier.height(1.dp))
                         Text(
-                            text = if (slot1Active) "IMS已注册" else "IMS未注册",
+                            text = if (slot1Active) stringResource(R.string.ims_registered_short) else stringResource(R.string.ims_not_registered_short),
                             color = if (slot1Active) AccentGreen else AccentRed,
                             fontSize = 9.sp
                         )
@@ -1190,7 +1174,7 @@ fun LocalAdbCard(
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            if (hasResolvedPort) "一键激活" else "等待开启...",
+                            if (hasResolvedPort) stringResource(R.string.one_tap_activate) else stringResource(R.string.waiting_for_enable),
                             fontSize = 12.sp
                         )
                     }
@@ -1206,7 +1190,7 @@ fun LocalAdbCard(
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "一键恢复",
+                        stringResource(R.string.one_tap_restore),
                         fontSize = 12.sp
                     )
                 }
@@ -1214,7 +1198,7 @@ fun LocalAdbCard(
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "💡 激活后 IMS 状态将在数秒内自动更新。",
+                text = stringResource(R.string.ims_status_hint),
                 fontSize = 10.sp,
                 color = AccentOrange,
                 modifier = Modifier.padding(horizontal = 2.dp),
@@ -1228,7 +1212,7 @@ fun LocalAdbCard(
                 horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = if (showManualPorts) "隐藏高级设置" else "显示高级设置",
+                    text = if (showManualPorts) stringResource(R.string.hide_advanced) else stringResource(R.string.show_advanced),
                     color = TextMuted,
                     fontSize = 10.sp,
                     modifier = Modifier
@@ -1243,7 +1227,7 @@ fun LocalAdbCard(
                     value = portInput,
                     onValueChange = { onPortInputChange(it) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("连接端口 (ADB Port)", fontSize = 9.sp) },
+                    label = { Text(stringResource(R.string.adb_port_label), fontSize = 9.sp) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)

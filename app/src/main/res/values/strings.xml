@@ -1,4 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">IMS for Pixel</string>
+
+    <!-- Notifications: IMS status -->
+    <string name="ims_status_channel">Статус активации IMS</string>
+    <string name="volte_activate_success">✅ VoLTE успешно активирован</string>
+    <string name="volte_activate_done">⚠️ Активация VoLTE завершена</string>
+    <string name="config_restored_default">✅ Настройки восстановлены по умолчанию</string>
+    <string name="sim1_ims_registered">SIM 1: IMS зарегистрирован  </string>
+    <string name="sim1_ims_not_registered">SIM 1: IMS не зарегистрирован  </string>
+    <string name="sim2_ims_registered">SIM 2: IMS зарегистрирован</string>
+    <string name="sim2_ims_not_registered">SIM 2: IMS не зарегистрирован</string>
+    <string name="carrier_override_cleared">Переопределение настроек оператора сброшено. Проверьте, работают ли звонки.</string>
+
+    <!-- Notifications: pairing -->
+    <string name="notification_permission_required">Для ввода кода сопряжения в уведомлении нужно разрешение на уведомления</string>
+    <string name="pairing_channel">Сопряжение беспроводной отладки</string>
+    <string name="pairing_channel_description">Быстрый ввод кода сопряжения беспроводной отладки из панели уведомлений</string>
+    <string name="pairing_code_hint">Введите 6-значный код сопряжения</string>
+    <string name="send_pairing_code">Отправить код сопряжения</string>
+    <string name="pairing_notification_body">💡 Нажмите «Отправить код сопряжения» ниже и введите 6 цифр</string>
+    <string name="pairing_port_not_found_toast">Порт сопряжения не обнаружен. Убедитесь, что окно сопряжения в системе открыто!</string>
+    <string name="pairing_failed_no_port">Ошибка сопряжения: порт окна сопряжения не обнаружен</string>
+    <string name="pairing_in_background">Сопряжение устройства в фоне…</string>
+    <string name="pairing_port_progress">Сопряжение с портом %1$d…</string>
+    <string name="pairing_success_toast">Сопряжение через уведомление успешно!</string>
+    <string name="pairing_success_return">Сопряжение успешно! Вернитесь в приложение для активации.</string>
+    <string name="pairing_failed">Ошибка сопряжения: %1$s</string>
+
+    <!-- Toasts -->
+    <string name="enable_wireless_debugging_first">Сначала включите беспроводную отладку</string>
+    <string name="activate_failed">Ошибка активации: %1$s</string>
+    <string name="restore_failed">Ошибка восстановления: %1$s</string>
+    <string name="developer_options_not_found">Параметры разработчика не найдены</string>
+
+    <!-- Main screen -->
+    <string name="subtitle">VoLTE/VoNR без root</string>
+    <string name="sim_card_1">SIM-карта 1</string>
+    <string name="sim_card_2">SIM-карта 2</string>
+
+    <!-- Config panel -->
+    <string name="carrier_settings_slot">Настройки оператора (слот %1$d)</string>
+    <string name="config_applied">Конфиг: применён</string>
+    <string name="config_system_default">Конфиг: по умолчанию</string>
+    <string name="ims_registered">IMS: зарегистрирован</string>
+    <string name="ims_not_registered">IMS: не зарегистрирован</string>
+    <string name="volte_title">VoLTE</string>
+    <string name="volte_desc">Голосовые звонки через сеть 4G/LTE</string>
+    <string name="vonr_title">VoNR (5G)</string>
+    <string name="vonr_desc">Голосовые звонки в сети 5G SA</string>
+    <string name="vowifi_title">VoWiFi</string>
+    <string name="vowifi_desc">Звонки через Wi-Fi при слабом сигнале</string>
+    <string name="wfc_roaming_title">VoWiFi в роуминге</string>
+    <string name="wfc_roaming_desc">VoWiFi при международном роуминге</string>
+    <string name="ss_ut_title">Доп. услуги (UT)</string>
+    <string name="ss_ut_desc">Переадресация, ожидание вызова и др.</string>
+    <string name="apply_on_boot_title">Применять при загрузке</string>
+    <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки</string>
+
+    <!-- Wireless debugging card -->
+    <string name="wireless_debug_activation">Активация беспроводной отладки</string>
+    <string name="step1_wifi_title">Шаг 1: подключение к Wi-Fi (обязательно)</string>
+    <string name="step1_wifi_desc">Для беспроводной отладки телефон должен быть подключён к Wi-Fi</string>
+    <string name="connected">Подключено</string>
+    <string name="not_connected">Не подключено</string>
+    <string name="step2_pairing_title">Шаг 2: включение и сопряжение</string>
+    <string name="step2_authorized">Сопряжение выполнено, подключение разрешено</string>
+    <string name="step2_needs_pairing">Служба включена (нужно сопряжение)</string>
+    <string name="step2_enable_in_settings">Включите беспроводную отладку в настройках системы</string>
+    <string name="authorized">Разрешено</string>
+    <string name="not_paired">Не сопряжено</string>
+    <string name="open_wireless_debugging">Открыть беспроводную отладку</string>
+    <string name="step3_activate_title">Шаг 3: активация в один клик</string>
+    <string name="step3_activate_desc">Применить выбранные параметры к SIM-картам</string>
+    <string name="sim1_call_config">Конфигурация SIM 1</string>
+    <string name="sim2_call_config">Конфигурация SIM 2</string>
+    <string name="app_optimized">Оптимизировано</string>
+    <string name="system_default">По умолчанию</string>
+    <string name="ims_registered_short">IMS зарегистрирован</string>
+    <string name="ims_not_registered_short">IMS не зарегистрирован</string>
+    <string name="one_tap_activate">Активировать</string>
+    <string name="waiting_for_enable">Ожидание…</string>
+    <string name="one_tap_restore">Восстановить</string>
+    <string name="ims_status_hint">💡 Статус IMS обновится автоматически через несколько секунд после активации.</string>
+    <string name="hide_advanced">Скрыть расширенные настройки</string>
+    <string name="show_advanced">Показать расширенные настройки</string>
+    <string name="adb_port_label">Порт подключения (ADB)</string>
 </resources>
