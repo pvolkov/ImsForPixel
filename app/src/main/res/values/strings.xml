@@ -86,4 +86,8 @@
     <string name="hide_advanced">Скрыть расширенные настройки</string>
     <string name="show_advanced">Показать расширенные настройки</string>
     <string name="adb_port_label">Порт подключения (ADB)</string>
+    <string name="wireless_debug_settings_cd">Настройки беспроводной отладки</string>
+    <string name="wireless_debug_setup_hint">Настройте беспроводную отладку через ⚙️ вверху справа</string>
+    <string name="adb_status_ready">ADB: готов</string>
+    <string name="adb_status_not_ready">ADB: не настроен</string>
 </resources>

@@ -389,6 +389,38 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
     }
 
     val scope = rememberCoroutineScope()
+    var showWirelessDebugSheet by remember { mutableStateOf(false) }
+    val isWifiConnected = remember { mutableStateOf(false) }
+    val isAuthorized = remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    WirelessDebugEffects(
+        portInput = portInput,
+        onPortInputChange = { portInput = it },
+        isWifiConnected = isWifiConnected,
+        isAuthorized = isAuthorized
+    )
+
+    if (showWirelessDebugSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showWirelessDebugSheet = false },
+            sheetState = sheetState,
+            containerColor = CardBackground,
+            contentColor = TextLight
+        ) {
+            WirelessDebugSetupPanel(
+                portInput = portInput,
+                onPortInputChange = { portInput = it },
+                isWifiConnected = isWifiConnected.value,
+                isAuthorized = isAuthorized.value,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding()
+            )
+        }
+    }
 
     fun triggerManualApply() {
         val port = portInput.toIntOrNull()
@@ -523,6 +555,24 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                             color = TextLight
                         )
                     },
+                    actions = {
+                        val setupReady = isWifiConnected.value && isAuthorized.value && portInput.isNotEmpty()
+                        BadgedBox(
+                            badge = {
+                                if (!setupReady) {
+                                    Badge(containerColor = AccentOrange)
+                                }
+                            }
+                        ) {
+                            IconButton(onClick = { showWirelessDebugSheet = true }) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = stringResource(R.string.wireless_debug_settings_cd),
+                                    tint = TextLight
+                                )
+                            }
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = CardBackground
                     )
@@ -564,15 +614,15 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     )
                 }
 
-                // Local Apply Card (Wireless Debugging self-connect)
                 item {
-                    LocalAdbCard(
+                    ActivationCard(
                         recheckSignal = recheckSignal,
                         portInput = portInput,
-                        onPortInputChange = { portInput = it },
                         isApplying = isApplying,
+                        isAuthorized = isAuthorized.value,
                         onApplyClick = { triggerManualApply() },
-                        onRestoreClick = { triggerManualRestore() }
+                        onRestoreClick = { triggerManualRestore() },
+                        onOpenSetup = { showWirelessDebugSheet = true }
                     )
                 }
             }
@@ -776,31 +826,15 @@ fun ToggleRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LocalAdbCard(
-    recheckSignal: MutableState<Long>,
+fun WirelessDebugEffects(
     portInput: String,
     onPortInputChange: (String) -> Unit,
-    isApplying: Boolean,
-    onApplyClick: () -> Unit,
-    onRestoreClick: () -> Unit
+    isWifiConnected: MutableState<Boolean>,
+    isAuthorized: MutableState<Boolean>
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var pairingPortInput by remember { mutableStateOf("") }
-    var showManualPorts by remember { mutableStateOf(false) }
-    var isAuthorized by remember { mutableStateOf(false) }
-    var slot0Active by remember { mutableStateOf(false) }
-    var slot1Active by remember { mutableStateOf(false) }
-    var slot0Applied by remember { mutableStateOf(false) }
-    var slot1Applied by remember { mutableStateOf(false) }
-    var isWifiConnected by remember { mutableStateOf(false) }
 
-    val signalValue = recheckSignal.value
-    // Auth check: only re-run when portInput changes, NOT on every 1s signal tick.
-    // Running every second would spam new Kadb connections and compete with the
-    // background IMS polling loop and any active BrokerInstrumentation command.
     LaunchedEffect(portInput) {
         val port = portInput.toIntOrNull()
         if (port != null && port > 0 && port <= 65535) {
@@ -808,37 +842,14 @@ fun LocalAdbCard(
                 try {
                     Kadb.create("127.0.0.1", port, 3000, 3000).use { kadb ->
                         val response = kadb.shell("echo 1")
-                        isAuthorized = (response.exitCode == 0)
+                        isAuthorized.value = (response.exitCode == 0)
                     }
                 } catch (e: Exception) {
-                    isAuthorized = false
+                    isAuthorized.value = false
                 }
             }
         } else {
-            isAuthorized = false
-        }
-    }
-
-    LaunchedEffect(signalValue) {
-        slot0Active = try {
-            java.io.File(context.filesDir, "ims_status_0.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot1Active = try {
-            java.io.File(context.filesDir, "ims_status_1.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot0Applied = try {
-            java.io.File(context.filesDir, "config_applied_0.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
-        }
-        slot1Applied = try {
-            java.io.File(context.filesDir, "config_applied_1.txt").readText().trim().toBoolean()
-        } catch (e: Exception) {
-            false
+            isAuthorized.value = false
         }
     }
 
@@ -847,13 +858,13 @@ fun LocalAdbCard(
         val callback = object : android.net.ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
                 val caps = connectivityManager.getNetworkCapabilities(network)
-                isWifiConnected = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+                isWifiConnected.value = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
             }
             override fun onLost(network: android.net.Network) {
-                isWifiConnected = false
+                isWifiConnected.value = false
             }
             override fun onCapabilitiesChanged(network: android.net.Network, networkCapabilities: android.net.NetworkCapabilities) {
-                isWifiConnected = networkCapabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                isWifiConnected.value = networkCapabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
             }
         }
         val request = android.net.NetworkRequest.Builder()
@@ -862,10 +873,10 @@ fun LocalAdbCard(
         try {
             connectivityManager.registerNetworkCallback(request, callback)
         } catch (e: Exception) {}
-        
+
         val activeNet = connectivityManager.activeNetwork
         val caps = connectivityManager.getNetworkCapabilities(activeNet)
-        isWifiConnected = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+        isWifiConnected.value = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
 
         onDispose {
             try {
@@ -874,7 +885,6 @@ fun LocalAdbCard(
         }
     }
 
-    // Auto-discover the ports via mDNS (Network Service Discovery)
     val nsdManager = remember { context.getSystemService(Context.NSD_SERVICE) as NsdManager }
     DisposableEffect(Unit) {
         val connectListener = object : NsdManager.DiscoveryListener {
@@ -942,10 +952,7 @@ fun LocalAdbCard(
                         }
 
                         override fun onServiceResolved(resolvedServiceInfo: NsdServiceInfo) {
-                            val port = resolvedServiceInfo.port
-                            Log.d("LocalAdb", "Resolved local ADB pairing port: $port")
-                            pairingPortInput = port.toString()
-                            MainActivity.pairingPort = port
+                            MainActivity.pairingPort = resolvedServiceInfo.port
                         }
                     })
                 }
@@ -981,6 +988,195 @@ fun LocalAdbCard(
             }
         }
     }
+}
+
+@Composable
+fun WirelessDebugSetupPanel(
+    portInput: String,
+    onPortInputChange: (String) -> Unit,
+    isWifiConnected: Boolean,
+    isAuthorized: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var showManualPorts by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            stringResource(R.string.wireless_debug_activation),
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = TextLight
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.step1_wifi_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+                Text(stringResource(R.string.step1_wifi_desc), fontSize = 10.sp, color = TextMuted)
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isWifiConnected) AccentGreen.copy(alpha = 0.15f) else AccentRed.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = if (isWifiConnected) stringResource(R.string.connected) else stringResource(R.string.not_connected),
+                    color = if (isWifiConnected) AccentGreen else AccentRed,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = BorderColor)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.step2_pairing_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
+                Text(
+                    text = when {
+                        isAuthorized -> stringResource(R.string.step2_authorized)
+                        portInput.isNotEmpty() -> stringResource(R.string.step2_needs_pairing)
+                        else -> stringResource(R.string.step2_enable_in_settings)
+                    },
+                    fontSize = 10.sp,
+                    color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        when {
+                            isAuthorized -> AccentGreen.copy(alpha = 0.15f)
+                            portInput.isNotEmpty() -> AccentOrange.copy(alpha = 0.15f)
+                            else -> BorderColor.copy(alpha = 0.3f)
+                        }
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = when {
+                        isAuthorized -> stringResource(R.string.authorized)
+                        portInput.isNotEmpty() -> stringResource(R.string.not_paired)
+                        else -> stringResource(R.string.not_connected)
+                    },
+                    color = when {
+                        isAuthorized -> AccentGreen
+                        portInput.isNotEmpty() -> AccentOrange
+                        else -> TextMuted
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                (context as? MainActivity)?.requestNotificationPermissionAndShow()
+                try {
+                    context.startActivity(Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS"))
+                } catch (e: Exception) {
+                    try {
+                        context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+                    } catch (e2: Exception) {
+                        Toast.makeText(context, context.getString(R.string.developer_options_not_found), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextLight),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)
+        ) {
+            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(stringResource(R.string.open_wireless_debugging), fontSize = 11.sp)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = if (showManualPorts) stringResource(R.string.hide_advanced) else stringResource(R.string.show_advanced),
+                color = TextMuted,
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .clickable { showManualPorts = !showManualPorts }
+                    .padding(4.dp)
+            )
+        }
+
+        if (showManualPorts) {
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = portInput,
+                onValueChange = onPortInputChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.adb_port_label), fontSize = 9.sp) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ActivationCard(
+    recheckSignal: MutableState<Long>,
+    portInput: String,
+    isApplying: Boolean,
+    isAuthorized: Boolean,
+    onApplyClick: () -> Unit,
+    onRestoreClick: () -> Unit,
+    onOpenSetup: () -> Unit
+) {
+    val context = LocalContext.current
+    var slot0Active by remember { mutableStateOf(false) }
+    var slot1Active by remember { mutableStateOf(false) }
+    var slot0Applied by remember { mutableStateOf(false) }
+    var slot1Applied by remember { mutableStateOf(false) }
+
+    val signalValue = recheckSignal.value
+    LaunchedEffect(signalValue) {
+        slot0Active = try {
+            java.io.File(context.filesDir, "ims_status_0.txt").readText().trim().toBoolean()
+        } catch (e: Exception) {
+            false
+        }
+        slot1Active = try {
+            java.io.File(context.filesDir, "ims_status_1.txt").readText().trim().toBoolean()
+        } catch (e: Exception) {
+            false
+        }
+        slot0Applied = try {
+            java.io.File(context.filesDir, "config_applied_0.txt").readText().trim().toBoolean()
+        } catch (e: Exception) {
+            false
+        }
+        slot1Applied = try {
+            java.io.File(context.filesDir, "config_applied_1.txt").readText().trim().toBoolean()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    val hasResolvedPort = portInput.isNotEmpty() && isAuthorized
 
     Card(
         modifier = Modifier
@@ -995,110 +1191,38 @@ fun LocalAdbCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    stringResource(R.string.wireless_debug_activation),
+                    stringResource(R.string.step3_activate_title),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = TextLight
                 )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Step 1: Wi-Fi connection status (Prerequisite)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.step1_wifi_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
-                    Text(stringResource(R.string.step1_wifi_desc), fontSize = 10.sp, color = TextMuted)
-                }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isWifiConnected) AccentGreen.copy(alpha = 0.15f) else AccentRed.copy(alpha = 0.15f))
+                        .background(if (hasResolvedPort) AccentGreen.copy(alpha = 0.15f) else AccentOrange.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (isWifiConnected) stringResource(R.string.connected) else stringResource(R.string.not_connected),
-                        color = if (isWifiConnected) AccentGreen else AccentRed,
+                        text = if (hasResolvedPort) stringResource(R.string.adb_status_ready) else stringResource(R.string.adb_status_not_ready),
+                        color = if (hasResolvedPort) AccentGreen else AccentOrange,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = BorderColor)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Step 2: Wireless Debugging & Pairing
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.step2_pairing_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
-                    Text(
-                        text = when {
-                            isAuthorized -> stringResource(R.string.step2_authorized)
-                            portInput.isNotEmpty() -> stringResource(R.string.step2_needs_pairing)
-                            else -> stringResource(R.string.step2_enable_in_settings)
-                        },
-                        fontSize = 10.sp,
-                        color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isAuthorized) AccentGreen.copy(alpha = 0.15f) else if (portInput.isNotEmpty()) AccentOrange.copy(alpha = 0.15f) else BorderColor.copy(alpha = 0.3f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = when {
-                            isAuthorized -> stringResource(R.string.authorized)
-                            portInput.isNotEmpty() -> stringResource(R.string.not_paired)
-                            else -> stringResource(R.string.not_connected)
-                        },
-                        color = if (isAuthorized) AccentGreen else if (portInput.isNotEmpty()) AccentOrange else TextMuted,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    (context as? MainActivity)?.requestNotificationPermissionAndShow()
-                    try {
-                        context.startActivity(Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS"))
-                    } catch (e: Exception) {
-                        try {
-                            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
-                        } catch (e2: Exception) {
-                            Toast.makeText(context, context.getString(R.string.developer_options_not_found), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextLight),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor)
-            ) {
-                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.open_wireless_debugging), fontSize = 11.sp)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = BorderColor)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Step 3: Activation & Status check
-            Text(stringResource(R.string.step3_activate_title), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = TextLight)
             Spacer(modifier = Modifier.height(4.dp))
             Text(stringResource(R.string.step3_activate_desc), fontSize = 10.sp, color = TextMuted)
+
+            if (!hasResolvedPort) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.wireless_debug_setup_hint),
+                    fontSize = 10.sp,
+                    color = AccentOrange,
+                    modifier = Modifier.clickable { onOpenSetup() }
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -1157,7 +1281,7 @@ fun LocalAdbCard(
                 }
             }
 
-            val hasResolvedPort = portInput.isNotEmpty()
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1189,10 +1313,7 @@ fun LocalAdbCard(
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        stringResource(R.string.one_tap_restore),
-                        fontSize = 12.sp
-                    )
+                    Text(stringResource(R.string.one_tap_restore), fontSize = 12.sp)
                 }
             }
 
@@ -1202,37 +1323,8 @@ fun LocalAdbCard(
                 fontSize = 10.sp,
                 color = AccentOrange,
                 modifier = Modifier.padding(horizontal = 2.dp),
-                maxLines = 1
+                maxLines = 2
             )
-
-            // Advanced manual override
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = if (showManualPorts) stringResource(R.string.hide_advanced) else stringResource(R.string.show_advanced),
-                    color = TextMuted,
-                    fontSize = 10.sp,
-                    modifier = Modifier
-                        .clickable { showManualPorts = !showManualPorts }
-                        .padding(4.dp)
-                )
-            }
-
-            if (showManualPorts) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = portInput,
-                    onValueChange = { onPortInputChange(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.adb_port_label), fontSize = 9.sp) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textStyle = LocalTextStyle.current.copy(fontSize = 11.sp)
-                )
-            }
         }
     }
 }
