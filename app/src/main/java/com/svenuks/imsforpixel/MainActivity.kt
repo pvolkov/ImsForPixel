@@ -57,36 +57,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun showImsStatusNotification(isActivate: Boolean) {
-        val channelId = "ims_status_channel"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(channelId, getString(R.string.ims_status_channel), NotificationManager.IMPORTANCE_HIGH)
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
-        }
-        // Read actual IMS status from files
-        val slot0 = try { java.io.File(filesDir, "ims_status_0.txt").readText().trim().toBoolean() } catch (e: Exception) { false }
-        val slot1 = try { java.io.File(filesDir, "ims_status_1.txt").readText().trim().toBoolean() } catch (e: Exception) { false }
-        val anyRegistered = slot0 || slot1
-        val title = if (isActivate) {
-            if (anyRegistered) getString(R.string.volte_activate_success) else getString(R.string.volte_activate_done)
-        } else {
-            getString(R.string.config_restored_default)
-        }
-        val body = if (isActivate) {
-            buildString {
-                if (slot0) append(getString(R.string.sim1_ims_registered)) else append(getString(R.string.sim1_ims_not_registered))
-                if (slot1) append(getString(R.string.sim2_ims_registered)) else append(getString(R.string.sim2_ims_not_registered))
-            }
-        } else {
-            getString(R.string.carrier_override_cleared)
-        }
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-        getSystemService(NotificationManager::class.java)?.notify(203, notification)
+        ImsStatusNotification.show(this, isActivate)
     }
 
     private var pairingReceiver: BroadcastReceiver? = null
@@ -677,6 +648,16 @@ fun SimStatusOverview(recheckSignal: MutableState<Long>) {
                         stringResource(R.string.ims_not_registered_short)
                     },
                     imsTone = if (slot1Active) StatusTone.Success else StatusTone.Error,
+                )
+            }
+
+            val registeredCount = listOf(slot0Active, slot1Active).count { it }
+            if (registeredCount == 1) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.sim_status_dual_sim_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

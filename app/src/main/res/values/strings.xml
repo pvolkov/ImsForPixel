@@ -4,11 +4,28 @@
 
     <!-- Notifications: IMS status -->
     <string name="ims_status_channel">Статус активации IMS</string>
+    <string name="notification_title_all_ok">Активация успешна</string>
+    <string name="notification_title_partial">Активация частичная</string>
+    <string name="notification_title_none">IMS не зарегистрирован</string>
+    <string name="notification_title_restored">Настройки восстановлены</string>
+    <string name="notification_ims_ok_short">✅ IMS</string>
+    <string name="notification_ims_fail_short">❌ нет IMS</string>
+    <string name="notification_ims_registered">IMS зарегистрирован</string>
+    <string name="notification_ims_not_registered">IMS не зарегистрирован</string>
+    <string name="notification_config_applied">конфиг применён</string>
+    <string name="notification_config_default">конфиг по умолчанию</string>
+    <string name="notification_detail_line">%1$s — %2$s, %3$s</string>
+    <string name="notification_summary_two_sims">%1$s · %2$s</string>
+    <string name="notification_hint_dual_sim">💡 На двух SIM IMS часто регистрируется только на одной. Переключитесь на «SIM-карта 2», включите VoLTE и снова нажмите «Активировать» в ⚙️. Либо сделайте эту SIM основной для звонков.</string>
+    <string name="notification_hint_none_registered">💡 IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, Wi‑Fi, включите VoLTE для каждой карты и повторите активацию.</string>
+    <string name="notification_hint_all_ok">💡 VoLTE/VoWiFi должны работать. Статус в приложении обновится автоматически.</string>
+    <string name="notification_restore_hint">Переопределения оператора сброшены. Проверьте, работают ли звонки.</string>
+    <!-- Legacy notification strings (kept for compatibility) -->
     <string name="volte_activate_success">✅ VoLTE успешно активирован</string>
     <string name="volte_activate_done">⚠️ Активация VoLTE завершена</string>
     <string name="config_restored_default">✅ Настройки восстановлены по умолчанию</string>
-    <string name="sim1_ims_registered">SIM 1: IMS зарегистрирован  </string>
-    <string name="sim1_ims_not_registered">SIM 1: IMS не зарегистрирован  </string>
+    <string name="sim1_ims_registered">SIM 1: IMS зарегистрирован</string>
+    <string name="sim1_ims_not_registered">SIM 1: IMS не зарегистрирован</string>
     <string name="sim2_ims_registered">SIM 2: IMS зарегистрирован</string>
     <string name="sim2_ims_not_registered">SIM 2: IMS не зарегистрирован</string>
     <string name="carrier_override_cleared">Переопределение настроек оператора сброшено. Проверьте, работают ли звонки.</string>
@@ -81,7 +98,7 @@
     <string name="step3_activate_desc">Применить выбранные параметры к SIM-картам</string>
     <string name="sim1_call_config">Конфигурация SIM 1</string>
     <string name="sim2_call_config">Конфигурация SIM 2</string>
-    <string name="app_optimized">Оптимизировано</string>
+    <string name="app_optimized">Конфиг применён</string>
     <string name="system_default">По умолчанию</string>
     <string name="ims_registered_short">IMS зарегистрирован</string>
     <string name="ims_not_registered_short">IMS не зарегистрирован</string>
@@ -94,6 +111,7 @@
     <string name="adb_port_label">Порт подключения (ADB)</string>
     <string name="wireless_debug_settings_cd">Настройки и активация</string>
     <string name="sim_status_overview">Статус SIM-карт</string>
+    <string name="sim_status_dual_sim_hint">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту отдельно и снова активируйте через ⚙️.</string>
     <string name="wireless_debug_setup_hint">Настройте беспроводную отладку через ⚙️ вверху справа</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>

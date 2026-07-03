@@ -14,9 +14,6 @@ import java.lang.reflect.Method
 import android.os.Build
 import android.app.UiAutomation
 import android.content.Intent
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 
  
 class BrokerInstrumentation : Instrumentation() {
@@ -362,46 +359,6 @@ class BrokerInstrumentation : Instrumentation() {
     }
 
     private fun showImsStatusNotification(isActivate: Boolean) {
-        val channelId = "ims_status_channel"
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(channelId, context.getString(R.string.ims_status_channel), NotificationManager.IMPORTANCE_HIGH)
-            notificationManager.createNotificationChannel(ch)
-        }
-        
-        // Read actual IMS status from files
-        val slot0 = try { java.io.File(context.filesDir, "ims_status_0.txt").readText().trim().toBoolean() } catch (e: Exception) { false }
-        val slot1 = try { java.io.File(context.filesDir, "ims_status_1.txt").readText().trim().toBoolean() } catch (e: Exception) { false }
-        val anyRegistered = slot0 || slot1
-        val title = if (isActivate) {
-            if (anyRegistered) context.getString(R.string.volte_activate_success) else context.getString(R.string.volte_activate_done)
-        } else {
-            context.getString(R.string.config_restored_default)
-        }
-        val body = if (isActivate) {
-            buildString {
-                if (slot0) append(context.getString(R.string.sim1_ims_registered)) else append(context.getString(R.string.sim1_ims_not_registered))
-                if (slot1) append(context.getString(R.string.sim2_ims_registered)) else append(context.getString(R.string.sim2_ims_not_registered))
-            }
-        } else {
-            context.getString(R.string.carrier_override_cleared)
-        }
-        
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(context, channelId)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(context)
-        }
-        
-        val notification = builder
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setAutoCancel(true)
-            .build()
-            
-        notificationManager.notify(203, notification)
+        ImsStatusNotification.show(context, isActivate)
     }
 }
