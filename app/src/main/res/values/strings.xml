@@ -75,7 +75,7 @@
     <string name="ss_ut_title">Доп. услуги (UT)</string>
     <string name="ss_ut_desc">Переадресация, ожидание вызова и др.</string>
     <string name="apply_on_boot_title">Применять при загрузке</string>
-    <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки</string>
+    <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки (нужны Wi‑Fi и беспроводная отладка)</string>
     <string name="show_lte_plus_title">Иконка LTE+</string>
     <string name="show_lte_plus_desc">Показывать LTE+ вместо LTE в строке состояния при хорошем сигнале</string>
     <string name="show_vowifi_spn_title">Метка VoWiFi</string>
@@ -115,4 +115,54 @@
     <string name="wireless_debug_setup_hint">Настройте беспроводную отладку через ⚙️ вверху справа</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>
+
+    <!-- Per-SIM activation -->
+    <string name="activate_this_sim">Активировать эту SIM</string>
+    <string name="activate_both_sims">Активировать обе</string>
+    <string name="restore_this_sim">Восстановить эту SIM</string>
+    <string name="restore_both_sims">Восстановить обе</string>
+    <string name="activate_slot_named">Активировать: %1$s</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">Диагностика</string>
+    <string name="diagnostics_subtitle">Проверка готовности к VoLTE/VoWiFi</string>
+    <string name="diagnostics_cd">Диагностика</string>
+    <string name="diag_wifi">Wi‑Fi подключён</string>
+    <string name="diag_wifi_fail">Подключите телефон к Wi‑Fi для беспроводной отладки</string>
+    <string name="diag_adb_port">Порт ADB обнаружен</string>
+    <string name="diag_adb_port_fail">Включите беспроводную отладку в настройках</string>
+    <string name="diag_adb_auth">ADB авторизован</string>
+    <string name="diag_adb_auth_fail">Выполните сопряжение в ⚙️</string>
+    <string name="diag_config_slot">Конфиг: %1$s</string>
+    <string name="diag_config_applied">переопределение применено</string>
+    <string name="diag_config_default">системные настройки</string>
+    <string name="diag_ims_slot">IMS: %1$s</string>
+    <string name="diag_ims_ok">зарегистрирован</string>
+    <string name="diag_ims_fail">не зарегистрирован</string>
+    <string name="diag_volte_pref_slot">VoLTE в приложении: %1$s</string>
+    <string name="diag_volte_pref_off">выключен в настройках</string>
+    <string name="diag_boot_reapply">Автоприменение после загрузки</string>
+    <string name="diag_copy_report">Скопировать отчёт</string>
+    <string name="diag_copied">Отчёт скопирован</string>
+    <string name="diag_boot_retry_hint">После перезагрузки настройки не применились автоматически. Включите беспроводную отладку и повторите.</string>
+    <string name="diag_boot_retry">Повторить автоприменение</string>
+
+    <!-- Boot reapply -->
+    <string name="boot_reapply_channel">Автоприменение при загрузке</string>
+    <string name="boot_reapply_channel_desc">Уведомления о результате применения настроек после перезагрузки</string>
+    <string name="boot_reapply_notification_title">Нужно применить настройки IMS</string>
+    <string name="boot_reapply_notification_body">После перезагрузки настройки не применились: %1$s. Откройте приложение, включите беспроводную отладку и активируйте снова.</string>
+    <string name="boot_status_none">ещё не выполнялось</string>
+    <string name="boot_status_pending">выполняется…</string>
+    <string name="boot_status_success">успешно применено</string>
+    <string name="boot_status_failed">не удалось</string>
+    <string name="boot_status_failed_detail">не удалось: %1$s</string>
+    <string name="boot_fail_no_wifi">нет Wi‑Fi</string>
+    <string name="boot_fail_no_adb">беспроводная отладка не найдена</string>
+    <string name="boot_fail_not_authorized">ADB не авторизован</string>
+    <string name="boot_fail_unknown">неизвестная ошибка</string>
+    <string name="boot_reapply_banner">После перезагрузки настройки не применились автоматически</string>
+    <string name="boot_reapply_banner_action">Повторить</string>
+    <string name="apply_on_boot_note">Требуется Wi‑Fi и включённая беспроводная отладка после перезагрузки</string>
+    <string name="polling_paused_hint">Опрос IMS приостановлен в фоне</string>
 </resources>

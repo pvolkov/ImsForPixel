@@ -45,6 +45,9 @@ import android.app.PendingIntent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import android.os.Build
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 class MainActivity : ComponentActivity() {
 
@@ -273,14 +276,36 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(System.currentTimeMillis()) }) {
+    val context = LocalContext.current
     var selectedSimSlot by remember { mutableStateOf(0) }
-    var portInput by remember { mutableStateOf("") }
+    var portInput by remember {
+        mutableStateOf(VolteSettings.getLastAdbPort(context)?.toString() ?: "")
+    }
     var isApplying by remember { mutableStateOf(false) }
-    // True while am instrument is running — pauses background ImsQueryTool polling
     val isInstrumenting = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
 
-    val context = LocalContext.current
-    
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isForeground by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> isForeground = true
+                Lifecycle.Event.ON_PAUSE -> isForeground = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        isForeground = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(isForeground) {
+        if (isForeground) {
+            recheckSignal.value = System.currentTimeMillis()
+        }
+    }
+
     LaunchedEffect(Unit) {
         MainActivity.onAuthStatusChanged = {
             recheckSignal.value = System.currentTimeMillis()
@@ -291,190 +316,219 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         }
         while (true) {
             delay(1000)
-            recheckSignal.value = System.currentTimeMillis()
+            if (isForeground) {
+                recheckSignal.value = System.currentTimeMillis()
+            }
         }
     }
 
-    LaunchedEffect(portInput) {
+    LaunchedEffect(portInput, isForeground) {
         val port = portInput.toIntOrNull()
-        if (port != null && port > 0 && port <= 65535) {
-            withContext(Dispatchers.IO) {
-                var activeKadb: com.flyfishxu.kadb.Kadb? = null
-                try {
-                    while (true) {
-                        // Pause while BrokerInstrumentation is running to avoid file conflicts
-                        if (isInstrumenting.get()) {
-                            delay(1000)
-                            continue
-                        }
-                        try {
-                            val kadb = activeKadb ?: com.flyfishxu.kadb.Kadb.create("127.0.0.1", port, 5000, 5000).also { activeKadb = it }
-                            val pathRes = kadb.shell("pm path com.svenuks.imsforpixel")
-                            if (pathRes.exitCode == 0) {
-                                val path = pathRes.output.trim().substringAfter("package:")
-                                if (path.isNotEmpty()) {
-                                    val queryCmd = "export CLASSPATH=$path; app_process /system/bin com.svenuks.imsforpixel.ImsQueryTool"
-                                    val queryRes = kadb.shell(queryCmd)
-                                    if (queryRes.exitCode == 0) {
-                                        val lines = queryRes.output.lines()
-                                        for (line in lines) {
-                                            if (line.startsWith("RESULT:")) {
-                                                val parts = line.split(":")
-                                                if (parts.size == 3) {
-                                                    val slot = parts[1].toIntOrNull() ?: continue
-                                                    val isImsRegistered = parts[2].trim().toBoolean()
-                                                    val statusFile = java.io.File(context.filesDir, "ims_status_$slot.txt")
-                                                    statusFile.writeText(isImsRegistered.toString())
-                                                    Log.d("LocalAdb", "Updated slot $slot IMS status: $isImsRegistered")
-                                                }
+        if (port == null || port <= 0 || port > 65535) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            var activeKadb: com.flyfishxu.kadb.Kadb? = null
+            try {
+                while (true) {
+                    if (!isForeground || isInstrumenting.get()) {
+                        delay(1000)
+                        continue
+                    }
+                    try {
+                        val kadb = activeKadb ?: com.flyfishxu.kadb.Kadb.create("127.0.0.1", port, 5000, 5000).also { activeKadb = it }
+                        val pathRes = kadb.shell("pm path com.svenuks.imsforpixel")
+                        if (pathRes.exitCode == 0) {
+                            val path = pathRes.output.trim().substringAfter("package:")
+                            if (path.isNotEmpty()) {
+                                val queryCmd = "export CLASSPATH=$path; app_process /system/bin com.svenuks.imsforpixel.ImsQueryTool"
+                                val queryRes = kadb.shell(queryCmd)
+                                if (queryRes.exitCode == 0) {
+                                    val lines = queryRes.output.lines()
+                                    for (line in lines) {
+                                        if (line.startsWith("RESULT:")) {
+                                            val parts = line.split(":")
+                                            if (parts.size == 3) {
+                                                val slot = parts[1].toIntOrNull() ?: continue
+                                                val isImsRegistered = parts[2].trim().toBoolean()
+                                                val statusFile = java.io.File(context.filesDir, "ims_status_$slot.txt")
+                                                statusFile.writeText(isImsRegistered.toString())
+                                                Log.d("LocalAdb", "Updated slot $slot IMS status: $isImsRegistered")
                                             }
                                         }
                                     }
                                 }
                             }
-                        } catch (e: Exception) {
-                            Log.d("LocalAdb", "Error in background IMS check: ${e.message}")
-                            try { activeKadb?.close() } catch (ignored: Exception) {}
-                            activeKadb = null
                         }
-                        delay(3000)
+                    } catch (e: Exception) {
+                        Log.d("LocalAdb", "Error in background IMS check: ${e.message}")
+                        try { activeKadb?.close() } catch (ignored: Exception) {}
+                        activeKadb = null
                     }
-                } finally {
-                    try { activeKadb?.close() } catch (ignored: Exception) {}
+                    delay(3000)
                 }
+            } finally {
+                try { activeKadb?.close() } catch (ignored: Exception) {}
             }
         }
     }
 
     val scope = rememberCoroutineScope()
     var showWirelessDebugSheet by remember { mutableStateOf(false) }
+    var showDiagnosticsSheet by remember { mutableStateOf(false) }
     val isWifiConnected = remember { mutableStateOf(false) }
     val isAuthorized = remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val diagnosticsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    suspend fun runInstrument(port: Int, clear: Boolean, slot: Int?): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Kadb.create("127.0.0.1", port, 90000, 90000).use { kadb ->
+                    val cmd = InstrumentationHelper.instrumentCommand(clear = clear, slot = slot)
+                    val response = kadb.shell(cmd)
+                    if (response.exitCode == 0) {
+                        VolteSettings.setLastAdbPort(context, port)
+                        Result.success(Unit)
+                    } else {
+                        Result.failure(Exception("Exit code ${response.exitCode}: ${response.output}"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    fun startInstrument(clear: Boolean, slot: Int?) {
+        val port = portInput.toIntOrNull()
+        if (port == null || port <= 0 || port > 65535) {
+            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val prefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
+        if (clear) {
+            if (slot != null) {
+                resetSlotPrefsToDefaults(prefs, slot)
+                prefs.edit().putBoolean("clear_slot_$slot", true).commit()
+            } else {
+                prefs.edit()
+                    .putBoolean("clear_slot_0", true)
+                    .putBoolean("clear_slot_1", true)
+                    .putBoolean("volte_slot_0", true)
+                    .putBoolean("volte_slot_1", true)
+                    .putBoolean("vonr_slot_0", true)
+                    .putBoolean("vonr_slot_1", true)
+                    .putBoolean("vowifi_slot_0", true)
+                    .putBoolean("vowifi_slot_1", true)
+                    .putBoolean("wfc_roaming_slot_0", true)
+                    .putBoolean("wfc_roaming_slot_1", true)
+                    .putBoolean("ss_ut_slot_0", true)
+                    .putBoolean("ss_ut_slot_1", true)
+                    .putBoolean("show_ims_slot_0", true)
+                    .putBoolean("show_ims_slot_1", true)
+                    .putBoolean("show_lte_plus_slot_0", true)
+                    .putBoolean("show_lte_plus_slot_1", true)
+                    .putBoolean("show_vowifi_spn_slot_0", true)
+                    .putBoolean("show_vowifi_spn_slot_1", true)
+                    .putBoolean("allow_apn_slot_0", false)
+                    .putBoolean("allow_apn_slot_1", false)
+                    .putBoolean("cross_sim_slot_0", false)
+                    .putBoolean("cross_sim_slot_1", false)
+                    .putBoolean("apply_on_boot_slot_0", false)
+                    .putBoolean("apply_on_boot_slot_1", false)
+                    .commit()
+            }
+        } else {
+            if (slot != null) {
+                prefs.edit().putBoolean("clear_slot_$slot", false).commit()
+            } else {
+                prefs.edit()
+                    .putBoolean("clear_slot_0", false)
+                    .putBoolean("clear_slot_1", false)
+                    .commit()
+            }
+        }
+
+        isApplying = true
+        isInstrumenting.set(true)
+        scope.launch {
+            val result = runInstrument(port, clear, slot)
+            isApplying = false
+            isInstrumenting.set(false)
+            result.fold(
+                onSuccess = {
+                    if (clear) {
+                        MainActivity.onInstrumentDone?.invoke(false, true)
+                    } else {
+                        MainActivity.onInstrumentDone?.invoke(true, true)
+                    }
+                    recheckSignal.value = System.currentTimeMillis()
+                },
+                onFailure = { error ->
+                    val msgRes = if (clear) R.string.restore_failed else R.string.activate_failed
+                    Toast.makeText(context, context.getString(msgRes, error.message ?: ""), Toast.LENGTH_LONG).show()
+                },
+            )
+        }
+    }
+
+    fun triggerBootReapply() {
+        val port = portInput.toIntOrNull()
+        if (port == null || port <= 0 || port > 65535) {
+            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
+            showWirelessDebugSheet = true
+            return
+        }
+        val prefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
+        for (slot in VolteSettings.slotsWithBootApply(context)) {
+            prefs.edit().putBoolean("clear_slot_$slot", false).commit()
+        }
+        isApplying = true
+        isInstrumenting.set(true)
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    Kadb.create("127.0.0.1", port, 90000, 90000).use { kadb ->
+                        val cmd = InstrumentationHelper.instrumentCommand(clear = false, bootReapply = true)
+                        val response = kadb.shell(cmd)
+                        if (response.exitCode == 0) {
+                            VolteSettings.setLastAdbPort(context, port)
+                            Result.success(Unit)
+                        } else {
+                            Result.failure(Exception("Exit code ${response.exitCode}: ${response.output}"))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+            isApplying = false
+            isInstrumenting.set(false)
+            result.fold(
+                onSuccess = {
+                    VolteSettings.setBootReapplyStatus(context, VolteSettings.BOOT_STATUS_SUCCESS)
+                    BootReapplyNotification.cancel(context)
+                    MainActivity.onInstrumentDone?.invoke(true, true)
+                    recheckSignal.value = System.currentTimeMillis()
+                },
+                onFailure = { error ->
+                    VolteSettings.setBootReapplyStatus(
+                        context,
+                        VolteSettings.BOOT_STATUS_FAILED,
+                        error.message.orEmpty(),
+                    )
+                    Toast.makeText(context, context.getString(R.string.activate_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
+                },
+            )
+        }
+    }
 
     WirelessDebugEffects(
         portInput = portInput,
         onPortInputChange = { portInput = it },
         isWifiConnected = isWifiConnected,
-        isAuthorized = isAuthorized
+        isAuthorized = isAuthorized,
     )
-
-    fun triggerManualApply() {
-        val port = portInput.toIntOrNull()
-        if (port == null || port <= 0 || port > 65535) {
-            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        // Reset clear flags to false to ensure the configuration overrides are applied
-        val prefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putBoolean("clear_slot_0", false)
-            .putBoolean("clear_slot_1", false)
-            .commit()
-
-        isApplying = true
-        isInstrumenting.set(true)
-        scope.launch {
-            // Run am instrument synchronously (no nohup/&) so we wait for the real result.
-            // BrokerInstrumentation polls IMS for up to 30s internally; timeout set to 90s.
-            val result = withContext(Dispatchers.IO) {
-                try {
-                    Kadb.create("127.0.0.1", port, 90000, 90000).use { kadb ->
-                        val cmd = "nohup am instrument -w -e clear false com.svenuks.imsforpixel/com.svenuks.imsforpixel.BrokerInstrumentation > /dev/null 2>&1 &"
-                        val response = kadb.shell(cmd)
-                        if (response.exitCode == 0) {
-                            Result.success(response.output)
-                        } else {
-                            Result.failure(Exception("Exit code ${response.exitCode}: ${response.output}"))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Result.failure(e)
-                }
-            }
-            isApplying = false
-            isInstrumenting.set(false)
-            result.fold(
-                onSuccess = {
-                    MainActivity.onInstrumentDone?.invoke(true, true)
-                },
-                onFailure = { error ->
-                    isInstrumenting.set(false)
-                    Toast.makeText(context, context.getString(R.string.activate_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
-                }
-            )
-        }
-    }
-
-    fun triggerManualRestore() {
-        val port = portInput.toIntOrNull()
-        if (port == null || port <= 0 || port > 65535) {
-            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        isApplying = true
-        isInstrumenting.set(true)
-        scope.launch {
-            
-            // Reset prefs for both slots
-            val prefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
-            prefs.edit()
-                .putBoolean("clear_slot_0", true)
-                .putBoolean("clear_slot_1", true)
-                .putBoolean("volte_slot_0", true)
-                .putBoolean("volte_slot_1", true)
-                .putBoolean("vonr_slot_0", true)
-                .putBoolean("vonr_slot_1", true)
-                .putBoolean("vowifi_slot_0", true)
-                .putBoolean("vowifi_slot_1", true)
-                .putBoolean("wfc_roaming_slot_0", true)
-                .putBoolean("wfc_roaming_slot_1", true)
-                .putBoolean("ss_ut_slot_0", true)
-                .putBoolean("ss_ut_slot_1", true)
-                .putBoolean("show_ims_slot_0", true)
-                .putBoolean("show_ims_slot_1", true)
-                .putBoolean("show_lte_plus_slot_0", true)
-                .putBoolean("show_lte_plus_slot_1", true)
-                .putBoolean("show_vowifi_spn_slot_0", true)
-                .putBoolean("show_vowifi_spn_slot_1", true)
-                .putBoolean("allow_apn_slot_0", false)
-                .putBoolean("allow_apn_slot_1", false)
-                .putBoolean("cross_sim_slot_0", false)
-                .putBoolean("cross_sim_slot_1", false)
-                .putBoolean("apply_on_boot_slot_0", false)
-                .putBoolean("apply_on_boot_slot_1", false)
-                .commit()
-
-            val result = withContext(Dispatchers.IO) {
-                try {
-                    Kadb.create("127.0.0.1", port, 90000, 90000).use { kadb ->
-                        val cmd = "nohup am instrument -w -e clear true com.svenuks.imsforpixel/com.svenuks.imsforpixel.BrokerInstrumentation > /dev/null 2>&1 &"
-                        val response = kadb.shell(cmd)
-                        if (response.exitCode == 0) {
-                            Result.success(response.output)
-                        } else {
-                            Result.failure(Exception("Exit code ${response.exitCode}: ${response.output}"))
-                        }
-                    }
-                } catch (e: Exception) {
-                    Result.failure(e)
-                }
-            }
-            isApplying = false
-            isInstrumenting.set(false)
-            result.fold(
-                onSuccess = {
-                    MainActivity.onInstrumentDone?.invoke(false, true)
-                },
-                onFailure = { error ->
-                    isInstrumenting.set(false)
-                    Toast.makeText(context, context.getString(R.string.restore_failed, error.message ?: ""), Toast.LENGTH_LONG).show()
-                }
-            )
-        }
-    }
 
     if (showWirelessDebugSheet) {
         ModalBottomSheet(
@@ -487,16 +541,43 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 isWifiConnected = isWifiConnected.value,
                 isAuthorized = isAuthorized.value,
                 isApplying = isApplying,
-                onApplyClick = { triggerManualApply() },
-                onRestoreClick = { triggerManualRestore() },
+                selectedSimLabel = CarrierInfo.getCarrierLabel(context, selectedSimSlot),
+                onApplySlot = { startInstrument(clear = false, slot = selectedSimSlot) },
+                onApplyBoth = { startInstrument(clear = false, slot = null) },
+                onRestoreSlot = { startInstrument(clear = true, slot = selectedSimSlot) },
+                onRestoreBoth = { startInstrument(clear = true, slot = null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp)
-                    .navigationBarsPadding()
+                    .navigationBarsPadding(),
             )
         }
     }
+
+    if (showDiagnosticsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showDiagnosticsSheet = false },
+            sheetState = diagnosticsSheetState,
+        ) {
+            DiagnosticsPanel(
+                isWifiConnected = isWifiConnected.value,
+                isAdbAuthorized = isAuthorized.value && portInput.isNotEmpty(),
+                adbPort = portInput,
+                onRetryBootReapply = if (VolteSettings.hasBootApply(context)) {
+                    { triggerBootReapply() }
+                } else {
+                    null
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .navigationBarsPadding(),
+            )
+        }
+    }
+
+    val hasAdbReady = isAuthorized.value && portInput.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -508,6 +589,12 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     )
                 },
                 actions = {
+                    IconButton(onClick = { showDiagnosticsSheet = true }) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = stringResource(R.string.diagnostics_cd),
+                        )
+                    }
                     val setupReady = isWifiConnected.value && isAuthorized.value && portInput.isNotEmpty()
                     BadgedBox(
                         badge = {
@@ -544,6 +631,13 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
             }
 
             item {
+                BootReapplyBanner(
+                    onRetry = { triggerBootReapply() },
+                    recheckSignal = recheckSignal,
+                )
+            }
+
+            item {
                 SimSelectorTabs(
                     selectedSlot = selectedSimSlot,
                     onSlotSelected = { selectedSimSlot = it },
@@ -553,13 +647,79 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
             item {
                 ConfigPanel(
                     slotIndex = selectedSimSlot,
+                    isAdbReady = hasAdbReady,
+                    isApplying = isApplying,
                     onConfigChanged = {},
+                    onActivateSlot = { startInstrument(clear = false, slot = selectedSimSlot) },
                 )
             }
         }
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BootReapplyBanner(
+    onRetry: () -> Unit,
+    recheckSignal: MutableState<Long>,
+) {
+    val context = LocalContext.current
+    var show by remember { mutableStateOf(false) }
+
+    LaunchedEffect(recheckSignal.value) {
+        show = VolteSettings.getBootReapplyStatus(context) == VolteSettings.BOOT_STATUS_FAILED &&
+            VolteSettings.hasBootApply(context)
+    }
+
+    if (!show) return
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.boot_reapply_banner),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            TextButton(onClick = onRetry) {
+                Text(
+                    stringResource(R.string.boot_reapply_banner_action),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        }
+    }
+}
+
+private fun resetSlotPrefsToDefaults(prefs: android.content.SharedPreferences, slot: Int) {
+    prefs.edit()
+        .putBoolean("clear_slot_$slot", true)
+        .putBoolean("volte_slot_$slot", true)
+        .putBoolean("vonr_slot_$slot", true)
+        .putBoolean("vowifi_slot_$slot", true)
+        .putBoolean("wfc_roaming_slot_$slot", true)
+        .putBoolean("ss_ut_slot_$slot", true)
+        .putBoolean("show_ims_slot_$slot", true)
+        .putBoolean("show_lte_plus_slot_$slot", true)
+        .putBoolean("show_vowifi_spn_slot_$slot", true)
+        .putBoolean("allow_apn_slot_$slot", false)
+        .putBoolean("cross_sim_slot_$slot", false)
+        .putBoolean("apply_on_boot_slot_$slot", false)
+        .commit()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -675,7 +835,10 @@ private fun readSlotBoolean(context: Context, fileName: String): Boolean {
 @Composable
 fun ConfigPanel(
     slotIndex: Int,
+    isAdbReady: Boolean = false,
+    isApplying: Boolean = false,
     onConfigChanged: () -> Unit,
+    onActivateSlot: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val prefs = remember(slotIndex) {
@@ -758,6 +921,38 @@ fun ConfigPanel(
                 VolteSettings.setApplyOnBoot(prefs, slotIndex, it)
                 onConfigChanged()
             }
+            if (applyOnBoot) {
+                Text(
+                    text = stringResource(R.string.apply_on_boot_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
+            if (onActivateSlot != null) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onActivateSlot,
+                    enabled = isAdbReady && !isApplying,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    if (isApplying) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.activate_slot_named, carrierLabel))
+                    }
+                }
+            }
         }
     }
 }
@@ -806,7 +1001,11 @@ fun WirelessDebugEffects(
                 try {
                     Kadb.create("127.0.0.1", port, 3000, 3000).use { kadb ->
                         val response = kadb.shell("echo 1")
-                        isAuthorized.value = (response.exitCode == 0)
+                        val authorized = response.exitCode == 0
+                        isAuthorized.value = authorized
+                        if (authorized) {
+                            VolteSettings.setLastAdbPort(context, port)
+                        }
                     }
                 } catch (e: Exception) {
                     isAuthorized.value = false
@@ -961,8 +1160,11 @@ fun WirelessDebugSetupPanel(
     isWifiConnected: Boolean,
     isAuthorized: Boolean,
     isApplying: Boolean,
-    onApplyClick: () -> Unit,
-    onRestoreClick: () -> Unit,
+    selectedSimLabel: String,
+    onApplySlot: () -> Unit,
+    onApplyBoth: () -> Unit,
+    onRestoreSlot: () -> Unit,
+    onRestoreBoth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1118,36 +1320,42 @@ fun WirelessDebugSetupPanel(
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onApplySlot,
+            enabled = !isApplying && hasResolvedPort,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (isApplying) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.activate_slot_named, selectedSimLabel))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onApplyBoth,
+            enabled = !isApplying && hasResolvedPort,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.SimCard, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.activate_both_sims))
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(
-                onClick = onApplyClick,
-                enabled = !isApplying && hasResolvedPort,
-                modifier = Modifier.weight(1f),
-            ) {
-                if (isApplying) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        if (hasResolvedPort) {
-                            stringResource(R.string.one_tap_activate)
-                        } else {
-                            stringResource(R.string.waiting_for_enable)
-                        },
-                    )
-                }
-            }
-
             OutlinedButton(
-                onClick = onRestoreClick,
+                onClick = onRestoreSlot,
                 enabled = !isApplying && hasResolvedPort,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -1155,8 +1363,25 @@ fun WirelessDebugSetupPanel(
                 ),
             ) {
                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.one_tap_restore))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    stringResource(R.string.restore_this_sim),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+
+            OutlinedButton(
+                onClick = onRestoreBoth,
+                enabled = !isApplying && hasResolvedPort,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(
+                    stringResource(R.string.restore_both_sims),
+                    style = MaterialTheme.typography.labelMedium,
+                )
             }
         }
 

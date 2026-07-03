@@ -186,17 +186,38 @@ class BrokerInstrumentation : Instrumentation() {
         val carrierConfigManager = context.getSystemService(CarrierConfigManager::class.java) ?: return
         val telephonyManager = context.getSystemService(TelephonyManager::class.java) ?: return
 
-        // Under shell permission identity, activeSubscriptionInfoList is accessible directly
         val activeSubscriptions = subManager.activeSubscriptionInfoList ?: emptyList()
         Log.d(TAG, "Found ${activeSubscriptions.size} active SIMs")
 
         val hasClearArg = arguments?.containsKey("clear") == true
         val clearArg = arguments?.getString("clear") == "true" || arguments?.getBoolean("clear") == true
+        val slotFilter = arguments?.getString("slot")?.toIntOrNull()
+        val bootReapply = arguments?.getString("boot_reapply") == "true" ||
+            arguments?.getBoolean("boot_reapply") == true
+
+        if (slotFilter != null) {
+            Log.d(TAG, "Slot filter active: $slotFilter")
+        }
+        if (bootReapply) {
+            Log.d(TAG, "Boot reapply mode: only slots with apply_on_boot")
+        }
+
+        val processedSubscriptions = mutableListOf<android.telephony.SubscriptionInfo>()
 
         // Phase 1: Apply overrides or Clear overrides, and trigger IMS reset
         for (subInfo in activeSubscriptions) {
             val subId = subInfo.subscriptionId
             val slotIndex = subInfo.simSlotIndex
+
+            if (slotFilter != null && slotIndex != slotFilter) {
+                continue
+            }
+            if (bootReapply && !sharedPrefs.getBoolean("apply_on_boot_slot_$slotIndex", false)) {
+                Log.d(TAG, "Skipping slot $slotIndex (apply_on_boot disabled)")
+                continue
+            }
+
+            processedSubscriptions.add(subInfo)
             Log.d(TAG, "Processing SIM slot $slotIndex (SubID $subId)")
 
             CarrierInfo.cacheCarrierName(
@@ -310,15 +331,18 @@ class BrokerInstrumentation : Instrumentation() {
             }
         }
 
-        // Do not auto-launch MainActivity early, user will see the prompt/notification
+        if (processedSubscriptions.isEmpty()) {
+            Log.w(TAG, "No SIM slots matched filter; skipping IMS poll")
+            return
+        }
 
         // Phase 2: Poll and update status for up to 30 seconds
-        Log.d(TAG, "Entering status polling loop...")
+        Log.d(TAG, "Entering status polling loop for ${processedSubscriptions.size} slot(s)...")
         var pollsLeft = 30
         val totalPolls = 30
         while (pollsLeft > 0) {
             var allRegistered = true
-            for (subInfo in activeSubscriptions) {
+            for (subInfo in processedSubscriptions) {
                 val subId = subInfo.subscriptionId
                 val slotIndex = subInfo.simSlotIndex
                 val isImsRegistered = checkImsRegistered(subId)

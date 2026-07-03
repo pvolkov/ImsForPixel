@@ -17,12 +17,14 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         if (!VolteSettings.hasBootApply(context)) return
 
+        VolteSettings.setBootReapplyStatus(context, VolteSettings.BOOT_STATUS_PENDING)
+
         val request = OneTimeWorkRequestBuilder<ReapplyWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
             .build()
 
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(ReapplyWorker.WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            .enqueueUniqueWork(ReapplyWorker.WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 }
