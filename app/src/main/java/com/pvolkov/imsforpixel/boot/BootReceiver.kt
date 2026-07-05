@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel.boot
+package com.pvolkov.imsforpixel.boot
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,7 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
-import com.svenuks.imsforpixel.VolteSettings
+import com.pvolkov.imsforpixel.VolteSettings
 
 class BootReceiver : BroadcastReceiver() {
 

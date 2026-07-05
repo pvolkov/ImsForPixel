@@ -1,17 +1,18 @@
-package com.svenuks.imsforpixel.boot
+package com.pvolkov.imsforpixel.boot
 
 import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.flyfishxu.kadb.Kadb
-import com.svenuks.imsforpixel.BootReapplyNotification
-import com.svenuks.imsforpixel.ImsStatusNotification
-import com.svenuks.imsforpixel.InstrumentationHelper
-import com.svenuks.imsforpixel.VolteSettings
-import com.svenuks.imsforpixel.adb.AdbDiscovery
-import com.svenuks.imsforpixel.adb.AdbEndpoint
-import com.svenuks.imsforpixel.system.ConnectivityMonitor
+import com.pvolkov.imsforpixel.BootReapplyNotification
+import com.pvolkov.imsforpixel.ImsStatusNotification
+import com.pvolkov.imsforpixel.InstrumentationHelper
+import com.pvolkov.imsforpixel.VolteSettings
+import com.pvolkov.imsforpixel.adb.AdbDiscovery
+import com.pvolkov.imsforpixel.adb.AdbEndpoint
+import com.pvolkov.imsforpixel.system.ConnectivityMonitor
+import com.pvolkov.imsforpixel.R
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -28,13 +29,13 @@ class ReapplyWorker(context: Context, params: WorkerParameters) : CoroutineWorke
 
         if (!ConnectivityMonitor(applicationContext).isWifiConnected()) {
             Log.d(TAG, "Not on Wi-Fi yet; will retry")
-            return retryOrFail(applicationContext.getString(com.svenuks.imsforpixel.R.string.boot_fail_no_wifi))
+            return retryOrFail(applicationContext.getString(R.string.boot_fail_no_wifi))
         }
 
         val port = resolveAdbPort()
         if (port == null) {
             Log.d(TAG, "No ADB connect endpoint; will retry")
-            return retryOrFail(applicationContext.getString(com.svenuks.imsforpixel.R.string.boot_fail_no_adb))
+            return retryOrFail(applicationContext.getString(R.string.boot_fail_no_adb))
         }
 
         val authorized = runCatching {
@@ -44,7 +45,7 @@ class ReapplyWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         }.getOrDefault(false)
         if (!authorized) {
             Log.d(TAG, "ADB not authorized on port $port; will retry")
-            return retryOrFail(applicationContext.getString(com.svenuks.imsforpixel.R.string.boot_fail_not_authorized))
+            return retryOrFail(applicationContext.getString(R.string.boot_fail_not_authorized))
         }
 
         VolteSettings.setLastAdbPort(applicationContext, port)
@@ -77,7 +78,7 @@ class ReapplyWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             Result.success()
         }.getOrElse {
             Log.e(TAG, "Boot reapply failed", it)
-            retryOrFail(it.message ?: applicationContext.getString(com.svenuks.imsforpixel.R.string.boot_fail_unknown))
+            retryOrFail(it.message ?: applicationContext.getString(R.string.boot_fail_unknown))
         }
     }
 
@@ -111,7 +112,7 @@ class ReapplyWorker(context: Context, params: WorkerParameters) : CoroutineWorke
             )
             BootReapplyNotification.showNeedsAttention(
                 applicationContext,
-                applicationContext.getString(com.svenuks.imsforpixel.R.string.boot_reapply_notification_body, message),
+                applicationContext.getString(R.string.boot_reapply_notification_body, message),
             )
             return Result.failure()
         }

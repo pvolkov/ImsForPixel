@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel
+package com.pvolkov.imsforpixel
 
 import android.Manifest
 import android.content.Context
@@ -9,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -24,9 +26,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
-import com.svenuks.imsforpixel.ui.components.StatusChip
-import com.svenuks.imsforpixel.ui.components.StatusTone
-import com.svenuks.imsforpixel.ui.theme.ImsForPixelTheme
+import com.pvolkov.imsforpixel.ui.components.StatusChip
+import com.pvolkov.imsforpixel.ui.components.StatusTone
+import com.pvolkov.imsforpixel.ui.theme.ImsForPixelTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -91,10 +93,11 @@ class MainActivity : ComponentActivity() {
         }
 
         // Setup dynamic broadcast receiver for notification pairing code input
-        val filter = IntentFilter("com.svenuks.imsforpixel.ACTION_PAIR")
+        val pairAction = "$packageName.ACTION_PAIR"
+        val filter = IntentFilter(pairAction)
         pairingReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == "com.svenuks.imsforpixel.ACTION_PAIR") {
+                if (intent.action == pairAction) {
                     val remoteInput = androidx.core.app.RemoteInput.getResultsFromIntent(intent)
                     if (remoteInput != null) {
                         val code = remoteInput.getCharSequence("extra_pairing_code")?.toString()?.trim()
@@ -174,7 +177,7 @@ class MainActivity : ComponentActivity() {
             .setLabel(replyLabel)
             .build()
             
-        val intent = Intent("com.svenuks.imsforpixel.ACTION_PAIR").apply {
+        val intent = Intent("$packageName.ACTION_PAIR").apply {
             `package` = packageName
         }
         
@@ -335,11 +338,12 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     }
                     try {
                         val kadb = activeKadb ?: com.flyfishxu.kadb.Kadb.create("127.0.0.1", port, 5000, 5000).also { activeKadb = it }
-                        val pathRes = kadb.shell("pm path com.svenuks.imsforpixel")
+                        val appId = BuildConfig.APPLICATION_ID
+                        val pathRes = kadb.shell("pm path $appId")
                         if (pathRes.exitCode == 0) {
                             val path = pathRes.output.trim().substringAfter("package:")
                             if (path.isNotEmpty()) {
-                                val queryCmd = "export CLASSPATH=$path; app_process /system/bin com.svenuks.imsforpixel.ImsQueryTool"
+                                val queryCmd = "export CLASSPATH=$path; app_process /system/bin ${appId}.ImsQueryTool"
                                 val queryRes = kadb.shell(queryCmd)
                                 if (queryRes.exitCode == 0) {
                                     val lines = queryRes.output.lines()
@@ -596,17 +600,20 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                         )
                     }
                     val setupReady = isWifiConnected.value && isAuthorized.value && portInput.isNotEmpty()
-                    BadgedBox(
-                        badge = {
-                            if (!setupReady) {
-                                Badge()
-                            }
-                        }
-                    ) {
+                    Box {
                         IconButton(onClick = { showWirelessDebugSheet = true }) {
                             Icon(
                                 Icons.Default.Settings,
                                 contentDescription = stringResource(R.string.wireless_debug_settings_cd),
+                            )
+                        }
+                        if (!setupReady) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-10).dp, y = 10.dp)
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.error, CircleShape),
                             )
                         }
                     }
@@ -861,50 +868,36 @@ fun ConfigPanel(
         carrierLabel = CarrierInfo.getCarrierLabel(context, slotIndex)
     }
 
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            Text(
-                text = stringResource(R.string.carrier_settings_named, carrierLabel),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) { 
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SettingsSectionCard(title = stringResource(R.string.carrier_settings_named, carrierLabel)) {
+            ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) {
                 voLteEnabled = it
                 prefs.edit().putBoolean("volte_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow(stringResource(R.string.vonr_title), stringResource(R.string.vonr_desc), voNrEnabled) { 
+            ToggleRow(stringResource(R.string.vonr_title), stringResource(R.string.vonr_desc), voNrEnabled) {
                 voNrEnabled = it
                 prefs.edit().putBoolean("vonr_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow(stringResource(R.string.vowifi_title), stringResource(R.string.vowifi_desc), voWifiEnabled) { 
+            ToggleRow(stringResource(R.string.vowifi_title), stringResource(R.string.vowifi_desc), voWifiEnabled) {
                 voWifiEnabled = it
                 prefs.edit().putBoolean("vowifi_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow(stringResource(R.string.wfc_roaming_title), stringResource(R.string.wfc_roaming_desc), wfcRoamingEnabled) { 
+            ToggleRow(stringResource(R.string.wfc_roaming_title), stringResource(R.string.wfc_roaming_desc), wfcRoamingEnabled) {
                 wfcRoamingEnabled = it
                 prefs.edit().putBoolean("wfc_roaming_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
-            ToggleRow(stringResource(R.string.ss_ut_title), stringResource(R.string.ss_ut_desc), ssUtEnabled) { 
+            ToggleRow(stringResource(R.string.ss_ut_title), stringResource(R.string.ss_ut_desc), ssUtEnabled) {
                 ssUtEnabled = it
                 prefs.edit().putBoolean("ss_ut_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
+        }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text(
-                text = stringResource(R.string.display_at_carrier_header),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+        SettingsSectionCard(title = stringResource(R.string.display_at_carrier_header)) {
             ToggleRow(stringResource(R.string.show_lte_plus_title), stringResource(R.string.show_lte_plus_desc), showLtePlus) {
                 showLtePlus = it
                 prefs.edit().putBoolean("show_lte_plus_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
@@ -915,12 +908,33 @@ fun ConfigPanel(
                 prefs.edit().putBoolean("show_vowifi_spn_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
+        }
 
-            ToggleRow(stringResource(R.string.apply_on_boot_title), stringResource(R.string.apply_on_boot_desc), applyOnBoot) {
-                applyOnBoot = it
-                VolteSettings.setApplyOnBoot(prefs, slotIndex, it)
-                onConfigChanged()
-            }
+        SettingsSectionCard(title = stringResource(R.string.apply_on_boot_title)) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = stringResource(R.string.apply_on_boot_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = applyOnBoot,
+                        onCheckedChange = {
+                            applyOnBoot = it
+                            VolteSettings.setApplyOnBoot(prefs, slotIndex, it)
+                            onConfigChanged()
+                        },
+                    )
+                },
+                modifier = Modifier.clickable {
+                    applyOnBoot = !applyOnBoot
+                    VolteSettings.setApplyOnBoot(prefs, slotIndex, applyOnBoot)
+                    onConfigChanged()
+                },
+            )
             if (applyOnBoot) {
                 Text(
                     text = stringResource(R.string.apply_on_boot_note),
@@ -929,16 +943,19 @@ fun ConfigPanel(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
+        }
 
-            if (onActivateSlot != null) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(8.dp))
+        if (onActivateSlot != null) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+            ) {
                 Button(
                     onClick = onActivateSlot,
                     enabled = isAdbReady && !isApplying,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(16.dp),
                 ) {
                     if (isApplying) {
                         CircularProgressIndicator(
@@ -953,6 +970,28 @@ fun ConfigPanel(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            content()
         }
     }
 }

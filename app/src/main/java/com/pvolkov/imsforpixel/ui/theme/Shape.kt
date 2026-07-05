@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel.ui.theme
+package com.pvolkov.imsforpixel.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes

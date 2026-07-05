@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel
+package com.pvolkov.imsforpixel
 
 object InstrumentationHelper {
 
@@ -12,7 +12,7 @@ object InstrumentationHelper {
             if (slot != null) append(" -e slot $slot")
             if (bootReapply) append(" -e boot_reapply true")
         }
-        return "nohup am instrument -w $extras " +
-            "com.svenuks.imsforpixel/com.svenuks.imsforpixel.BrokerInstrumentation > /dev/null 2>&1 &"
+        val component = "${BuildConfig.APPLICATION_ID}/${BuildConfig.APPLICATION_ID}.BrokerInstrumentation"
+        return "nohup am instrument -w $extras $component > /dev/null 2>&1 &"
     }
 }

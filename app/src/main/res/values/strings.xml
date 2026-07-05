@@ -16,7 +16,7 @@
     <string name="notification_config_default">конфиг по умолчанию</string>
     <string name="notification_detail_line">%1$s — %2$s, %3$s</string>
     <string name="notification_summary_two_sims">%1$s · %2$s</string>
-    <string name="notification_hint_dual_sim">💡 На двух SIM IMS часто регистрируется только на одной. Переключитесь на «SIM-карта 2», включите VoLTE и снова нажмите «Активировать» в ⚙️. Либо сделайте эту SIM основной для звонков.</string>
+    <string name="notification_hint_dual_sim">💡 На двух SIM IMS часто регистрируется только на одной. Переключитесь на «SIM-карта 2», включите VoLTE и снова нажмите «Активировать» в Настройках. Либо сделайте эту SIM основной для звонков.</string>
     <string name="notification_hint_none_registered">💡 IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, Wi‑Fi, включите VoLTE для каждой карты и повторите активацию.</string>
     <string name="notification_hint_all_ok">💡 VoLTE/VoWiFi должны работать. Статус в приложении обновится автоматически.</string>
     <string name="notification_restore_hint">Переопределения оператора сброшены. Проверьте, работают ли звонки.</string>
@@ -59,7 +59,7 @@
     <!-- Config panel -->
     <string name="carrier_settings_slot">Настройки оператора (слот %1$d)</string>
     <string name="carrier_settings_named">Настройки: %1$s</string>
-    <string name="display_at_carrier_header">Отображение у оператора</string>
+    <string name="display_at_carrier_header">Настройки отображения</string>
     <string name="config_applied">Конфиг: применён</string>
     <string name="config_system_default">Конфиг: по умолчанию</string>
     <string name="ims_registered">IMS: зарегистрирован</string>

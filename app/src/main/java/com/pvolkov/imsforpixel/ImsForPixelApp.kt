@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel
+package com.pvolkov.imsforpixel
 
 import android.app.Application
 import android.util.Log

@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.svenuks.imsforpixel'
+    namespace 'com.pvolkov.imsforpixel'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.svenuks.imsforpixel"
+        applicationId "com.pvolkov.imsforpixel"
         minSdk 28
         targetSdk 36
         versionCode 1

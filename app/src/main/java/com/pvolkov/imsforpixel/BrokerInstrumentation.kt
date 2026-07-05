@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel
+package com.pvolkov.imsforpixel
  
 import android.app.Instrumentation
 import android.content.Context

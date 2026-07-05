@@ -1,4 +1,4 @@
-package com.svenuks.imsforpixel.ui.theme
+package com.pvolkov.imsforpixel.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

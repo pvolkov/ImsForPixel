@@ -12,8 +12,8 @@
 
     <!-- Instrumentation for adopting shell permissions to override carrier configs on Android 15/16 -->
     <instrumentation
-        android:name="com.svenuks.imsforpixel.BrokerInstrumentation"
-        android:targetPackage="com.svenuks.imsforpixel"/>
+        android:name="com.pvolkov.imsforpixel.BrokerInstrumentation"
+        android:targetPackage="com.pvolkov.imsforpixel"/>
 
     <application
         android:name=".ImsForPixelApp"
