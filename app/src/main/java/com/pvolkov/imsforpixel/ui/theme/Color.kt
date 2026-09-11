@@ -2,6 +2,24 @@ package com.pvolkov.imsforpixel.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/** Semantic status colors that stay green/amber/red even when Dynamic Color is on. */
+object StatusPalette {
+    val successContainerLight = Color(0xFFD6F0D9)
+    val onSuccessLight = Color(0xFF0F5132)
+    val successContainerDark = Color(0xFF1B3D24)
+    val onSuccessDark = Color(0xFFA5D6A7)
+
+    val warningContainerLight = Color(0xFFFFE8C2)
+    val onWarningLight = Color(0xFF6B3B00)
+    val warningContainerDark = Color(0xFF43320A)
+    val onWarningDark = Color(0xFFFFD180)
+
+    val errorContainerLight = Color(0xFFFFDAD6)
+    val onErrorLight = Color(0xFF8C1D18)
+    val errorContainerDark = Color(0xFF5F1611)
+    val onErrorDark = Color(0xFFFFB4AB)
+}
+
 // Brand seed — fallback when Dynamic Color is unavailable (Android 11 and below)
 private val SeedBlue = Color(0xFF2A5298)
 

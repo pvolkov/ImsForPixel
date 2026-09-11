@@ -8,22 +8,22 @@
     <string name="notification_title_partial">Активация частичная</string>
     <string name="notification_title_none">IMS не зарегистрирован</string>
     <string name="notification_title_restored">Настройки восстановлены</string>
-    <string name="notification_ims_ok_short">✅ IMS</string>
-    <string name="notification_ims_fail_short">❌ нет IMS</string>
+    <string name="notification_ims_ok_short">IMS есть</string>
+    <string name="notification_ims_fail_short">нет IMS</string>
     <string name="notification_ims_registered">IMS зарегистрирован</string>
     <string name="notification_ims_not_registered">IMS не зарегистрирован</string>
     <string name="notification_config_applied">конфиг применён</string>
     <string name="notification_config_default">конфиг по умолчанию</string>
     <string name="notification_detail_line">%1$s — %2$s, %3$s</string>
     <string name="notification_summary_two_sims">%1$s · %2$s</string>
-    <string name="notification_hint_dual_sim">💡 На двух SIM IMS часто регистрируется только на одной. Переключитесь на «SIM-карта 2», включите VoLTE и снова нажмите «Активировать» в Настройках. Либо сделайте эту SIM основной для звонков.</string>
-    <string name="notification_hint_none_registered">💡 IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, Wi‑Fi, включите VoLTE для каждой карты и повторите активацию.</string>
-    <string name="notification_hint_all_ok">💡 VoLTE/VoWiFi должны работать. Статус в приложении обновится автоматически.</string>
+    <string name="notification_hint_dual_sim">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту и снова нажмите «Применить». Либо сделайте эту SIM основной для звонков.</string>
+    <string name="notification_hint_none_registered">IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, включите VoLTE для каждой карты и повторите.</string>
+    <string name="notification_hint_all_ok">VoLTE и VoWiFi должны работать. Статус в приложении обновится автоматически.</string>
     <string name="notification_restore_hint">Переопределения оператора сброшены. Проверьте, работают ли звонки.</string>
     <!-- Legacy notification strings (kept for compatibility) -->
-    <string name="volte_activate_success">✅ VoLTE успешно активирован</string>
-    <string name="volte_activate_done">⚠️ Активация VoLTE завершена</string>
-    <string name="config_restored_default">✅ Настройки восстановлены по умолчанию</string>
+    <string name="volte_activate_success">VoLTE успешно активирован</string>
+    <string name="volte_activate_done">Активация VoLTE завершена</string>
+    <string name="config_restored_default">Настройки восстановлены по умолчанию</string>
     <string name="sim1_ims_registered">SIM 1: IMS зарегистрирован</string>
     <string name="sim1_ims_not_registered">SIM 1: IMS не зарегистрирован</string>
     <string name="sim2_ims_registered">SIM 2: IMS зарегистрирован</string>
@@ -36,7 +36,7 @@
     <string name="pairing_channel_description">Быстрый ввод кода сопряжения беспроводной отладки из панели уведомлений</string>
     <string name="pairing_code_hint">Введите 6-значный код сопряжения</string>
     <string name="send_pairing_code">Отправить код сопряжения</string>
-    <string name="pairing_notification_body">💡 Нажмите «Отправить код сопряжения» ниже и введите 6 цифр</string>
+    <string name="pairing_notification_body">Нажмите «Отправить код сопряжения» ниже и введите 6 цифр</string>
     <string name="pairing_port_not_found_toast">Порт сопряжения не обнаружен. Убедитесь, что окно сопряжения в системе открыто!</string>
     <string name="pairing_failed_no_port">Ошибка сопряжения: порт окна сопряжения не обнаружен</string>
     <string name="pairing_in_background">Сопряжение устройства в фоне…</string>
@@ -61,7 +61,9 @@
     <string name="carrier_settings_named">Настройки: %1$s</string>
     <string name="display_at_carrier_header">Настройки отображения</string>
     <string name="display_settings_header">Значки и отображение</string>
-    <string name="display_settings_note">Одинаково для всех SIM-карт. Чтобы увидеть изменения в строке состояния, примените настройки.</string>
+    <string name="display_settings_note">Одинаково для всех SIM. Изменения применятся кнопкой внизу экрана.</string>
+    <string name="display_settings_expand">Показать значки и отображение</string>
+    <string name="display_settings_collapse">Скрыть значки и отображение</string>
     <string name="display_settings_apply">Применить ко всем SIM</string>
     <string name="config_applied">Конфиг: применён</string>
     <string name="config_system_default">Конфиг: по умолчанию</string>
@@ -77,8 +79,7 @@
     <string name="wfc_roaming_desc">VoWiFi при международном роуминге</string>
     <string name="ss_ut_title">Доп. услуги (UT)</string>
     <string name="ss_ut_desc">Переадресация, ожидание вызова и др.</string>
-    <string name="apply_on_boot_title">Применять при загрузке</string>
-    <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки (нужны Wi‑Fi и беспроводная отладка)</string>
+    <string name="override_persists_note">Настройки сохраняются после перезагрузки. Повторно применять нужно только после смены SIM или обновления системы.</string>
     <string name="show_4g_icon_title">Иконка 4G</string>
     <string name="show_4g_icon_desc">Показывать 4G вместо LTE в строке состояния</string>
     <string name="show_lte_plus_title">Иконка LTE+ / 4G+</string>
@@ -99,25 +100,30 @@
     <string name="authorized">Разрешено</string>
     <string name="not_paired">Не сопряжено</string>
     <string name="open_wireless_debugging">Открыть беспроводную отладку</string>
-    <string name="step3_activate_title">Шаг 3: активация в один клик</string>
-    <string name="step3_activate_desc">Применить выбранные параметры к SIM-картам</string>
+    <string name="step3_activate_title">Сброс настроек</string>
+    <string name="step3_activate_desc">Вернуть конфиг оператора. Применение — кнопкой внизу главного экрана.</string>
     <string name="sim1_call_config">Конфигурация SIM 1</string>
     <string name="sim2_call_config">Конфигурация SIM 2</string>
     <string name="app_optimized">Конфиг применён</string>
     <string name="system_default">По умолчанию</string>
     <string name="ims_registered_short">IMS зарегистрирован</string>
     <string name="ims_not_registered_short">IMS не зарегистрирован</string>
+    <string name="ims_unknown_short">IMS: нет данных</string>
+    <string name="ims_status_stale_hint">Статус IMS обновляется, когда включена беспроводная отладка.</string>
+    <string name="setup_wireless_cta">Настроить беспроводную отладку</string>
+    <string name="apply_slot_named">Применить: %1$s</string>
+    <string name="apply_all_sims">Применить ко всем SIM</string>
     <string name="one_tap_activate">Активировать</string>
     <string name="waiting_for_enable">Ожидание…</string>
     <string name="one_tap_restore">Восстановить</string>
-    <string name="ims_status_hint">💡 Статус IMS обновится автоматически через несколько секунд после активации.</string>
+    <string name="ims_status_hint">Статус IMS обновится через несколько секунд после применения.</string>
     <string name="hide_advanced">Скрыть расширенные настройки</string>
     <string name="show_advanced">Показать расширенные настройки</string>
     <string name="adb_port_label">Порт подключения (ADB)</string>
     <string name="wireless_debug_settings_cd">Настройки и активация</string>
     <string name="sim_status_overview">Статус SIM-карт</string>
-    <string name="sim_status_dual_sim_hint">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту отдельно и снова активируйте через ⚙️.</string>
-    <string name="wireless_debug_setup_hint">Настройте беспроводную отладку через ⚙️ вверху справа</string>
+    <string name="sim_status_dual_sim_hint">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту отдельно и снова нажмите «Применить».</string>
+    <string name="wireless_debug_setup_hint">Настройте беспроводную отладку в параметрах сверху справа</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>
 
@@ -126,7 +132,7 @@
     <string name="activate_both_sims">Активировать обе</string>
     <string name="restore_this_sim">Восстановить эту SIM</string>
     <string name="restore_both_sims">Восстановить обе</string>
-    <string name="activate_slot_named">Активировать: %1$s</string>
+    <string name="activate_slot_named">Применить: %1$s</string>
 
     <!-- Diagnostics -->
     <string name="diagnostics_title">Диагностика</string>
@@ -137,37 +143,17 @@
     <string name="diag_adb_port">Порт ADB обнаружен</string>
     <string name="diag_adb_port_fail">Включите беспроводную отладку в настройках</string>
     <string name="diag_adb_auth">ADB авторизован</string>
-    <string name="diag_adb_auth_fail">Выполните сопряжение в ⚙️</string>
+    <string name="diag_adb_auth_fail">Выполните сопряжение в настройках</string>
     <string name="diag_config_slot">Конфиг: %1$s</string>
     <string name="diag_config_applied">переопределение применено</string>
     <string name="diag_config_default">системные настройки</string>
     <string name="diag_ims_slot">IMS: %1$s</string>
     <string name="diag_ims_ok">зарегистрирован</string>
     <string name="diag_ims_fail">не зарегистрирован</string>
+    <string name="diag_ims_stale">нет данных после перезагрузки (нужен ADB)</string>
     <string name="diag_volte_pref_slot">VoLTE в приложении: %1$s</string>
     <string name="diag_volte_pref_off">выключен в настройках</string>
-    <string name="diag_boot_reapply">Автоприменение после загрузки</string>
     <string name="diag_copy_report">Скопировать отчёт</string>
     <string name="diag_copied">Отчёт скопирован</string>
-    <string name="diag_boot_retry_hint">После перезагрузки настройки не применились автоматически. Включите беспроводную отладку и повторите.</string>
-    <string name="diag_boot_retry">Повторить автоприменение</string>
-
-    <!-- Boot reapply -->
-    <string name="boot_reapply_channel">Автоприменение при загрузке</string>
-    <string name="boot_reapply_channel_desc">Уведомления о результате применения настроек после перезагрузки</string>
-    <string name="boot_reapply_notification_title">Нужно применить настройки IMS</string>
-    <string name="boot_reapply_notification_body">После перезагрузки настройки не применились: %1$s. Откройте приложение, включите беспроводную отладку и активируйте снова.</string>
-    <string name="boot_status_none">ещё не выполнялось</string>
-    <string name="boot_status_pending">выполняется…</string>
-    <string name="boot_status_success">успешно применено</string>
-    <string name="boot_status_failed">не удалось</string>
-    <string name="boot_status_failed_detail">не удалось: %1$s</string>
-    <string name="boot_fail_no_wifi">нет Wi‑Fi</string>
-    <string name="boot_fail_no_adb">беспроводная отладка не найдена</string>
-    <string name="boot_fail_not_authorized">ADB не авторизован</string>
-    <string name="boot_fail_unknown">неизвестная ошибка</string>
-    <string name="boot_reapply_banner">После перезагрузки настройки не применились автоматически</string>
-    <string name="boot_reapply_banner_action">Повторить</string>
-    <string name="apply_on_boot_note">Требуется Wi‑Fi и включённая беспроводная отладка после перезагрузки</string>
     <string name="polling_paused_hint">Опрос IMS приостановлен в фоне</string>
 </resources>

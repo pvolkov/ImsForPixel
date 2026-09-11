@@ -1,26 +1,17 @@
 package com.pvolkov.imsforpixel
 
 import android.content.Context
-import android.os.Build
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 
 object CarrierInfo {
 
     fun getCarrierNameForSlot(context: Context, slotIndex: Int): String? {
-        readCachedName(context, slotIndex)?.let { return it }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            try {
-                val subManager = context.getSystemService(SubscriptionManager::class.java) ?: return null
-                val info = subManager.getActiveSubscriptionInfoForSimSlotIndex(slotIndex) ?: return null
-                val carrier = info.carrierName?.toString()?.trim()
-                if (!carrier.isNullOrEmpty()) return carrier
-                val display = info.displayName?.toString()?.trim()
-                if (!display.isNullOrEmpty()) return display
-            } catch (_: SecurityException) {
-                // READ_PHONE_STATE may be denied — fall back to cached / generic label
-            }
+        liveOperatorName(context, slotIndex)?.let { live ->
+            cacheCarrierName(context, slotIndex, live)
+            return live
         }
-        return null
+        return readCachedName(context, slotIndex)
     }
 
     fun getCarrierLabel(context: Context, slotIndex: Int): String {
@@ -29,7 +20,7 @@ object CarrierInfo {
     }
 
     fun cacheCarrierName(context: Context, slotIndex: Int, name: String?) {
-        val trimmed = name?.trim().orEmpty()
+        val trimmed = sanitizeOperatorName(name?.trim().orEmpty())
         if (trimmed.isEmpty()) return
         try {
             java.io.File(context.filesDir, "carrier_name_$slotIndex.txt").writeText(trimmed)
@@ -37,12 +28,34 @@ object CarrierInfo {
         }
     }
 
+    private fun liveOperatorName(context: Context, slotIndex: Int): String? {
+        return try {
+            val subManager = context.getSystemService(SubscriptionManager::class.java) ?: return null
+            val info = subManager.getActiveSubscriptionInfoForSimSlotIndex(slotIndex) ?: return null
+            val display = sanitizeOperatorName(info.displayName?.toString().orEmpty())
+            if (display.isNotEmpty()) return display
+            val telephony = context.getSystemService(TelephonyManager::class.java)
+                ?.createForSubscriptionId(info.subscriptionId)
+            sanitizeOperatorName(telephony?.simOperatorName.orEmpty()).ifEmpty { null }
+        } catch (_: SecurityException) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun readCachedName(context: Context, slotIndex: Int): String? {
         return try {
-            val name = java.io.File(context.filesDir, "carrier_name_$slotIndex.txt").readText().trim()
+            val name = sanitizeOperatorName(
+                java.io.File(context.filesDir, "carrier_name_$slotIndex.txt").readText(),
+            )
             name.ifEmpty { null }
         } catch (_: Exception) {
             null
         }
+    }
+
+    internal fun sanitizeOperatorName(name: String): String {
+        return name.replace(Regex("""(?i)[\s\-]*Vo\-?Wi\-?Fi"""), "").trim()
     }
 }

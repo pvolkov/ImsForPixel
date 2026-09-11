@@ -17,10 +17,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -70,10 +68,10 @@ object DiagnosticsCollector {
             detail = if (isAdbAuthorized) null else context.getString(R.string.diag_adb_auth_fail),
         )
 
-        for (slot in 0..1) {
+        for (slot in SlotStatus.presentSlots(context)) {
             val carrier = CarrierInfo.getCarrierLabel(context, slot)
-            val configApplied = readFlag(context, "config_applied_${slot}.txt")
-            val imsRegistered = readFlag(context, "ims_status_${slot}.txt")
+            val configApplied = SlotStatus.isConfigApplied(context, slot)
+            val ims = SlotStatus.imsState(context, slot)
             val volte = prefs.getBoolean("volte_slot_$slot", true)
 
             items += DiagnosticItem(
@@ -87,30 +85,19 @@ object DiagnosticsCollector {
             )
             items += DiagnosticItem(
                 label = context.getString(R.string.diag_ims_slot, carrier),
-                passed = imsRegistered,
-                detail = if (imsRegistered) {
-                    context.getString(R.string.diag_ims_ok)
-                } else {
-                    context.getString(R.string.diag_ims_fail)
+                passed = ims == SlotStatus.ImsState.Registered,
+                detail = when (ims) {
+                    SlotStatus.ImsState.Registered -> context.getString(R.string.diag_ims_ok)
+                    SlotStatus.ImsState.Unknown -> context.getString(R.string.diag_ims_stale)
+                    SlotStatus.ImsState.NotRegistered -> context.getString(R.string.diag_ims_fail)
                 },
-                warning = configApplied && !imsRegistered,
+                warning = ims == SlotStatus.ImsState.Unknown ||
+                    (configApplied && ims == SlotStatus.ImsState.NotRegistered),
             )
             items += DiagnosticItem(
                 label = context.getString(R.string.diag_volte_pref_slot, carrier),
                 passed = volte,
                 detail = if (volte) null else context.getString(R.string.diag_volte_pref_off),
-            )
-        }
-
-        if (VolteSettings.hasBootApply(context)) {
-            val status = VolteSettings.getBootReapplyStatus(context)
-            val passed = status == VolteSettings.BOOT_STATUS_SUCCESS
-            items += DiagnosticItem(
-                label = context.getString(R.string.diag_boot_reapply),
-                passed = passed,
-                detail = VolteSettings.getBootReapplyStatusLabel(context),
-                warning = status == VolteSettings.BOOT_STATUS_FAILED ||
-                    status == VolteSettings.BOOT_STATUS_PENDING,
             )
         }
 
@@ -142,14 +129,6 @@ object DiagnosticsCollector {
             }
         }
     }
-
-    private fun readFlag(context: Context, fileName: String): Boolean {
-        return try {
-            java.io.File(context.filesDir, fileName).readText().trim().toBoolean()
-        } catch (_: Exception) {
-            false
-        }
-    }
 }
 
 @Composable
@@ -157,11 +136,11 @@ fun DiagnosticsPanel(
     isWifiConnected: Boolean,
     isAdbAuthorized: Boolean,
     adbPort: String,
-    onRetryBootReapply: (() -> Unit)?,
+    refreshKey: Long,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val items = remember(isWifiConnected, isAdbAuthorized, adbPort) {
+    val items = remember(isWifiConnected, isAdbAuthorized, adbPort, refreshKey) {
         DiagnosticsCollector.collect(context, isWifiConnected, isAdbAuthorized, adbPort)
     }
     val scrollState = rememberScrollState()
@@ -186,25 +165,6 @@ fun DiagnosticsPanel(
         items.forEach { item ->
             DiagnosticRow(item)
             Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        val bootFailed = VolteSettings.getBootReapplyStatus(context) == VolteSettings.BOOT_STATUS_FAILED
-        if (bootFailed && onRetryBootReapply != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                stringResource(R.string.diag_boot_retry_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = onRetryBootReapply,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.diag_boot_retry))
-            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -232,7 +192,7 @@ private fun DiagnosticRow(item: DiagnosticItem) {
     val icon = when {
         item.passed -> Icons.Default.CheckCircle
         item.warning -> Icons.Default.Warning
-        else -> Icons.Default.Error
+        else -> Icons.Default.Close
     }
     val tint = when {
         item.passed -> MaterialTheme.colorScheme.primary

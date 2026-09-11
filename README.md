@@ -14,6 +14,8 @@
 
 **IMS for Pixel** is a rootless carrier configuration override tool for Google Pixel (and AOSP-compatible) devices. It enables VoLTE, VoNR (5G Calling), and Wi-Fi Calling on carriers that ship incomplete or locked carrier bundles — and works even on **Android 17**, which further restricts privileged telephony APIs for third-party apps.
 
+Overrides are **persistent**: Android stores them and restores them after a reboot. Re-apply only after a SIM change or a system update that replaces the carrier config package.
+
 ### Inspired by Shizuku & IMS
 
 This project draws on the ideas of two great open-source projects:
@@ -26,30 +28,31 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 
 | | Shizuku-based tools | IMS for Pixel |
 |---|---|---|
-| Requires Shizuku app | ✅ Yes | ❌ No |
-| Requires root | ❌ No | ❌ No |
-| Requires PC / ADB cable | ❌ No | ❌ No |
-| Works on Android 15 / 16 / 17 | ⚠️ Varies | ✅ Yes |
-| Self-contained single APK | ❌ No | ✅ Yes |
-| Shows real IMS registration result | ⚠️ Varies | ✅ Yes (notification) |
+| Requires Shizuku app | Yes | No |
+| Requires root | No | No |
+| Requires PC / ADB cable | No | No |
+| Works on Android 15 / 16 / 17 | Varies | Yes |
+| Self-contained single APK | No | Yes |
+| Shows real IMS registration result | Varies | Yes (notification) |
+| Survives reboot | Varies | Yes (persistent override) |
 
 ---
 
 ## Features
 
-- ✅ **VoLTE** — Enable HD voice calls over LTE
-- ✅ **VoNR** — Enable 5G calling (Voice over New Radio)
-- ✅ **Wi-Fi Calling (VoWiFi)** — Make calls over Wi-Fi
-- ✅ **Wi-Fi Calling Roaming** — Keep Wi-Fi calling active while abroad
-- ✅ **Supplementary Services (UT)** — Call forwarding, call waiting, etc.
-- ✅ **Dual-SIM support** — Independent per-slot configuration
-- ✅ **One-tap restore** — Clear all overrides and return to carrier defaults
-- ✅ **Live IMS status** — Background polling every 3 s
-- ✅ **Notification result** — Real per-slot IMS registration status shown in notification bar after activation
-- ✅ **Tested on Android 10 – 17**
-- 🚫 **No root** required
-- 🚫 **No Shizuku** or any other privilege manager required
-- 🚫 **No internet** — all ADB traffic is local loopback only
+- **VoLTE** — Enable HD voice calls over LTE
+- **VoNR** — Enable 5G calling (Voice over New Radio)
+- **Wi-Fi Calling (VoWiFi)** — Make calls over Wi-Fi
+- **Wi-Fi Calling Roaming** — Keep Wi-Fi calling active while abroad
+- **Supplementary Services (UT)** — Call forwarding, call waiting, etc.
+- **Dual-SIM support** — Independent per-slot configuration
+- **One-tap restore** — Clear all overrides and return to carrier defaults
+- **Live IMS status** — Polled about every 8 s while the app is in the foreground and ADB is ready
+- **Notification result** — Per-slot IMS registration after apply
+- **Tested on Android 10 – 17**
+- No root required
+- No Shizuku or any other privilege manager required
+- No internet — all ADB traffic is local loopback only
 
 ---
 
@@ -63,7 +66,7 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
                                                             │ adoptShellPermissionIdentity()
                                                             ▼
                                                   CarrierConfigManager
-                                                  .overrideConfig(subId, bundle)
+                                                  .overrideConfig(subId, bundle, persistent=true)
                                                             │
                                                             ▼
                                                   TelephonyManager.resetIms()
@@ -76,10 +79,10 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 ```
 
 1. The app self-connects to the device's **Wireless Debugging** port via loopback (`127.0.0.1`).
-2. It launches `BrokerInstrumentation` via `am instrument`, which runs under the `shell` permission identity — the same mechanism Shizuku uses, but self-contained.
-3. `BrokerInstrumentation` calls `CarrierConfigManager.overrideConfig` with your chosen settings, resets IMS, and polls registration for up to 30 seconds.
-4. On completion, a **notification bar** message reports the real per-slot IMS registration result.
-5. A background `ImsQueryTool` process refreshes the in-app IMS status badges every 3 seconds.
+2. It launches `BrokerInstrumentation` via `am instrument --no-restart` (Android 11+), which runs under the `shell` permission identity — the same mechanism Shizuku uses, but self-contained.
+3. `BrokerInstrumentation` calls `CarrierConfigManager.overrideConfig` with `persistent = true`, resets IMS, and polls registration for up to 30 seconds.
+4. On completion, a **notification** reports the real per-slot IMS registration result.
+5. While the app is in the foreground and ADB is authorized, `ImsQueryTool` refreshes the in-app IMS badges about every 8 seconds.
 
 ---
 
@@ -88,10 +91,10 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 | Requirement | Details |
 |---|---|
 | Android version | Android 10 (API 28) or higher |
-| Tested up to | **Android 17** ✅ |
-| Wi-Fi | Must be connected to a Wi-Fi network |
-| Wireless Debugging | Must be enabled in Developer Options |
-| Root / Shizuku | ❌ Not required |
+| Tested up to | **Android 17** |
+| Wi-Fi | Required to enable and use Wireless Debugging |
+| Wireless Debugging | Must be enabled in Developer Options to apply or refresh IMS status |
+| Root / Shizuku | Not required |
 
 ---
 
@@ -107,13 +110,13 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 
 Download the latest APK from [Releases](../../releases) and install it, or build from source (see [Building](#building)).
 
-### 3. Pair & Activate
+### 3. Pair & Apply
 
 1. Open **IMS for Pixel**.
-2. The app auto-discovers the Wireless Debugging port via mDNS. When the pairing notification appears, enter the **6-digit pairing code** shown in the Wireless Debugging settings.
-3. Configure per-slot toggles as desired (VoLTE, VoNR, VoWiFi, etc.).
-4. Tap **一键激活** (One-tap Activate).
-5. Wait up to ~30 seconds. A system notification confirms success with per-slot IMS registration status.
+2. Tap **Настроить беспроводную отладку** (or the settings icon) if Wireless Debugging is not ready yet.
+3. When the pairing notification appears, enter the **6-digit pairing code** from Wireless Debugging settings.
+4. Configure per-slot toggles as desired (VoLTE, VoNR, VoWiFi, etc.).
+5. Tap **Применить**. Wait up to ~30 seconds. A system notification confirms success with per-slot IMS registration status.
 
 ---
 
@@ -128,7 +131,7 @@ Download the latest APK from [Releases](../../releases) and install it, or build
 ### Build Debug
 
 ```bash
-git clone https://github.com/svenuks/ImsForPixel.git
+git clone https://github.com/pvolkov/ImsForPixel.git
 cd ImsForPixel
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
@@ -150,17 +153,21 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 ## Project Structure
 
 ```
-app/src/main/java/com/svenuks/imsforpixel/
-├── MainActivity.kt          # Jetpack Compose UI + mDNS discovery + background IMS polling
-├── BrokerInstrumentation.kt # Shell-identity runner: overrides carrier config, polls IMS, posts notification
-└── ImsQueryTool.kt          # Lightweight app_process entry point for background IMS status queries
+app/src/main/java/com/pvolkov/imsforpixel/
+├── MainActivity.kt              # Compose UI, ADB pairing, foreground IMS polling
+├── BrokerInstrumentation.kt     # Shell-identity runner: override, poll, notify
+├── ImsQueryTool.kt              # app_process entry point for IMS status
+├── SlotStatus.kt                # Live config / IMS status (incl. after reboot)
+├── VolteSettings.kt             # SharedPreferences helpers
+└── adb/AdbDiscovery.kt          # mDNS discovery of Wireless Debugging
 ```
 
 | File | Role |
 |---|---|
-| `MainActivity.kt` | Full UI (Material 3 / Compose), mDNS service discovery, Kadb ADB client, background IMS refresh |
-| `BrokerInstrumentation.kt` | Privileged patch runner — overrides carrier config, resets IMS, polls registration, posts notification |
-| `ImsQueryTool.kt` | Minimal `app_process` entry point — queries IMS state without UiAutomation overhead |
+| `MainActivity.kt` | Material 3 UI, Kadb client, foreground IMS refresh |
+| `BrokerInstrumentation.kt` | Privileged runner — persistent `overrideConfig`, IMS reset, notification |
+| `ImsQueryTool.kt` | Minimal `app_process` entry point — IMS state without UiAutomation |
+| `SlotStatus.kt` | Whether our override is active; stale IMS after reboot |
 
 ---
 
@@ -171,7 +178,8 @@ app/src/main/java/com/svenuks/imsforpixel/
 | `INTERNET` | Required by Kadb for local loopback ADB socket |
 | `ACCESS_NETWORK_STATE` | Check Wi-Fi connectivity before ADB pairing |
 | `CHANGE_WIFI_MULTICAST_STATE` | mDNS (NSD) discovery of the Wireless Debugging port |
-| `POST_NOTIFICATIONS` | Show activation result and pairing code in notification bar |
+| `POST_NOTIFICATIONS` | Show apply result and pairing code |
+| `READ_PHONE_STATE` | Read operator name and effective carrier config after reboot |
 
 > No data is ever sent to any external server. All network traffic is loopback `127.0.0.1` only.
 
@@ -186,23 +194,22 @@ app/src/main/java/com/svenuks/imsforpixel/
 | [androidx.compose BOM](https://developer.android.com/jetpack/compose/bom) | 2024.06.00 | Compose UI, Material 3 |
 | [hiddenapibypass](https://github.com/LSPosed/HiddenApiBypass) | 4.3 | Restricted telephony API access on Android 9+ |
 | [kadb](https://github.com/flyfishxu/Kadb) | 2.1.1 | Pure-Kotlin ADB over Wi-Fi |
-| [adblib](https://github.com/tananaev/adblib) | 1.3 | ADB protocol support |
 
 ---
 
 ## FAQ
 
 **Q: Does this survive a reboot?**  
-A: No. `CarrierConfigManager.overrideConfig` overrides are in-memory and reset on reboot. Tap **一键激活** again after each reboot.
+A: Yes. The app writes a **persistent** carrier-config override. Android restores it on boot, so VoLTE/VoWiFi stay enabled without Wi-Fi or Wireless Debugging. Apply again after swapping the SIM or after an OTA that updates `com.android.carrierconfig`.
 
 **Q: Will this break anything?**  
-A: Tap **一键恢复** (One-tap Restore) at any time to clear all overrides and return to carrier defaults.
+A: Open settings (gear) and tap **Восстановить** to clear overrides and return to carrier defaults.
 
 **Q: My carrier requires provisioning — will this still work?**  
 A: The app sets `carrier_volte_provisioning_required_bool = false`. This works on most carriers. Carriers with server-side IMS provisioning checks may still fail independently of this app.
 
 **Q: Dual SIM support?**  
-A: Yes. Each active SIM slot is configured independently, with its own IMS badge in the UI.
+A: Yes. Each active SIM slot is configured independently, with its own IMS badge in the UI. Empty slots are hidden.
 
 **Q: Why not just use Shizuku?**  
 A: Shizuku is great, but requires a separate app to be installed and running. *IMS for Pixel* is entirely self-contained — one APK, no dependencies on other apps. It uses the same underlying mechanism (Wireless Debugging + shell permission identity) but handles everything internally.
@@ -216,7 +223,6 @@ A: No. The ADB connection is made over `127.0.0.1` (loopback) only. Android bind
 
 - **No external network requests.** No telemetry, analytics, or data collection of any kind.
 - **Loopback-only ADB.** Every socket connection goes to `127.0.0.1` (the device itself).
-- **Three source files.** The entire app is ~1200 lines of Kotlin across three files — easy to audit end-to-end.
 - **Standard APIs only.** Hidden APIs accessed via the established `HiddenApiBypass` library and Java reflection — no native code or binary blobs.
 
 ---

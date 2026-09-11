@@ -1,19 +1,16 @@
 package com.pvolkov.imsforpixel
  
 import android.app.Instrumentation
+import android.app.UiAutomation
 import android.content.Context
 import android.os.Bundle
 import android.os.PersistableBundle
-import android.system.Os
 import android.telephony.CarrierConfigManager
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.util.Log
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import java.lang.reflect.Method
-import android.os.Build
-import android.app.UiAutomation
-import android.content.Intent
 
  
 class BrokerInstrumentation : Instrumentation() {
@@ -21,34 +18,62 @@ class BrokerInstrumentation : Instrumentation() {
         private const val TAG = "VoLTEBrokerInst"
     }
  
-    private fun findMethod(obj: Any, name: String): Method? {
+    /**
+     * Finds a method by name walking up the class hierarchy and interfaces.
+     * When [paramCount] is given, only a method with exactly that many parameters is returned;
+     * the order of [Class.getDeclaredMethods] is unspecified, so overloads must be pinned explicitly.
+     */
+    private fun findMethod(obj: Any, name: String, paramCount: Int? = null): Method? {
+        fun matches(m: Method) = m.name == name && (paramCount == null || m.parameterTypes.size == paramCount)
+
         var clazz: Class<*>? = obj.javaClass
         while (clazz != null) {
             try {
-                val method = clazz.declaredMethods.firstOrNull { it.name == name }
-                if (method != null) {
-                    method.isAccessible = true
-                    return method
+                clazz.declaredMethods.firstOrNull(::matches)?.let {
+                    it.isAccessible = true
+                    return it
                 }
             } catch (e: Exception) {
                 // Ignore
             }
             clazz = clazz.superclass
         }
-        
-        // Search interfaces
+
         for (iface in obj.javaClass.interfaces) {
             try {
-                val method = iface.declaredMethods.firstOrNull { it.name == name }
-                if (method != null) {
-                    method.isAccessible = true
-                    return method
+                iface.declaredMethods.firstOrNull(::matches)?.let {
+                    it.isAccessible = true
+                    return it
                 }
             } catch (e: Exception) {
                 // Ignore
             }
         }
         return null
+    }
+
+    /**
+     * Applies (or clears, when [bundle] is null) a carrier config override.
+     *
+     * Always prefers `overrideConfig(int, PersistableBundle, boolean persistent)` with
+     * `persistent = true`: persistent overrides are stored by CarrierConfigLoader and restored on
+     * boot, so VoLTE/VoWiFi survive a reboot without any help from this app. Clearing with the
+     * same overload also deletes the persisted file; the 2-arg overload would leave it behind.
+     */
+    private fun overrideCarrierConfig(
+        carrierConfigManager: CarrierConfigManager,
+        subId: Int,
+        bundle: PersistableBundle?,
+    ) {
+        val persistentMethod = findMethod(carrierConfigManager, "overrideConfig", paramCount = 3)
+        if (persistentMethod != null) {
+            persistentMethod.invoke(carrierConfigManager, subId, bundle, true)
+            return
+        }
+        val legacyMethod = findMethod(carrierConfigManager, "overrideConfig", paramCount = 2)
+            ?: throw NoSuchMethodException("CarrierConfigManager.overrideConfig not found")
+        Log.w(TAG, "Only non-persistent overrideConfig(int, PersistableBundle) is available; override will not survive reboot")
+        legacyMethod.invoke(carrierConfigManager, subId, bundle)
     }
  
     override fun onCreate(arguments: Bundle?) {
@@ -143,21 +168,11 @@ class BrokerInstrumentation : Instrumentation() {
             CarrierInfo.cacheCarrierName(
                 context,
                 slotIndex,
-                subInfo.carrierName?.toString() ?: subInfo.displayName?.toString(),
+                subInfo.displayName?.toString() ?: subInfo.carrierName?.toString(),
             )
             val isImsRegistered = checkImsRegistered(subId)
             Log.d(TAG, "QueryStatusOnly: SIM slot $slotIndex IMS Registered: $isImsRegistered")
-            
-            val sharedPrefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
-            sharedPrefs.edit().putBoolean("ims_registered_slot_$slotIndex", isImsRegistered).commit()
-            
-            try {
-                val statusFile = java.io.File(context.filesDir, "ims_status_$slotIndex.txt")
-                statusFile.writeText(isImsRegistered.toString())
-                Log.d(TAG, "QueryStatusOnly: Saved status file for slot $slotIndex")
-            } catch (e: Exception) {
-                Log.e(TAG, "QueryStatusOnly: Failed to save status file", e)
-            }
+            SlotStatus.writeImsRegistered(context, slotIndex, isImsRegistered)
         }
     }
 
@@ -193,14 +208,9 @@ class BrokerInstrumentation : Instrumentation() {
         val hasClearArg = arguments?.containsKey("clear") == true
         val clearArg = arguments?.getString("clear") == "true" || arguments?.getBoolean("clear") == true
         val slotFilter = arguments?.getString("slot")?.toIntOrNull()
-        val bootReapply = arguments?.getString("boot_reapply") == "true" ||
-            arguments?.getBoolean("boot_reapply") == true
 
         if (slotFilter != null) {
             Log.d(TAG, "Slot filter active: $slotFilter")
-        }
-        if (bootReapply) {
-            Log.d(TAG, "Boot reapply mode: only slots with apply_on_boot")
         }
 
         val processedSubscriptions = mutableListOf<android.telephony.SubscriptionInfo>()
@@ -213,10 +223,6 @@ class BrokerInstrumentation : Instrumentation() {
             if (slotFilter != null && slotIndex != slotFilter) {
                 continue
             }
-            if (bootReapply && !sharedPrefs.getBoolean("apply_on_boot_slot_$slotIndex", false)) {
-                Log.d(TAG, "Skipping slot $slotIndex (apply_on_boot disabled)")
-                continue
-            }
 
             processedSubscriptions.add(subInfo)
             Log.d(TAG, "Processing SIM slot $slotIndex (SubID $subId)")
@@ -224,7 +230,7 @@ class BrokerInstrumentation : Instrumentation() {
             CarrierInfo.cacheCarrierName(
                 context,
                 slotIndex,
-                subInfo.carrierName?.toString() ?: subInfo.displayName?.toString(),
+                subInfo.displayName?.toString() ?: subInfo.carrierName?.toString(),
             )
 
             val clear = if (hasClearArg) {
@@ -235,20 +241,9 @@ class BrokerInstrumentation : Instrumentation() {
 
             if (clear) {
                 Log.d(TAG, "Clearing config for slot $slotIndex")
+                SlotStatus.writeConfigApplied(context, slotIndex, false)
                 try {
-                    val appliedFile = java.io.File(context.filesDir, "config_applied_$slotIndex.txt")
-                    appliedFile.writeText("false")
-                } catch (e: Exception) {}
-                try {
-                    val overrideMethod = findMethod(carrierConfigManager, "overrideConfig")
-                    if (overrideMethod != null) {
-                        val paramTypes = overrideMethod.parameterTypes
-                        if (paramTypes.size == 3) {
-                            overrideMethod.invoke(carrierConfigManager, subId, null, true)
-                        } else {
-                            overrideMethod.invoke(carrierConfigManager, subId, null)
-                        }
-                    }
+                    overrideCarrierConfig(carrierConfigManager, subId, null)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to clear carrier config reflectively", e)
                 }
@@ -301,24 +296,14 @@ class BrokerInstrumentation : Instrumentation() {
                 bundle.putBoolean("carrier_supports_ss_over_ut_bool", ssUt)
                 bundle.putBoolean("show_ims_registration_status_bool", showIms)
                 bundle.putBoolean("allow_adding_apns_bool", allowApn)
+                bundle.putBoolean(SlotStatus.OVERRIDE_SENTINEL_KEY, true)
 
                 Log.d(TAG, "Applying config for slot $slotIndex: VoLTE=$volte, VoNR=$vonr, VoWiFi=$vowifi")
                 
                 try {
-                    val overrideMethod = findMethod(carrierConfigManager, "overrideConfig")
-                    if (overrideMethod != null) {
-                        val paramTypes = overrideMethod.parameterTypes
-                        if (paramTypes.size == 3) {
-                            overrideMethod.invoke(carrierConfigManager, subId, bundle, true)
-                        } else {
-                            overrideMethod.invoke(carrierConfigManager, subId, bundle)
-                        }
-                        Log.d(TAG, "Applied config reflectively")
-                        try {
-                            val appliedFile = java.io.File(context.filesDir, "config_applied_$slotIndex.txt")
-                            appliedFile.writeText("true")
-                        } catch (e: Exception) {}
-                    }
+                    overrideCarrierConfig(carrierConfigManager, subId, bundle)
+                    Log.d(TAG, "Applied config reflectively")
+                    SlotStatus.writeConfigApplied(context, slotIndex, true)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to apply config reflectively", e)
                 }
@@ -351,11 +336,7 @@ class BrokerInstrumentation : Instrumentation() {
                 val isImsRegistered = checkImsRegistered(subId)
                 Log.d(TAG, "Poll $pollsLeft: SIM slot $slotIndex IMS Registered: $isImsRegistered")
                 
-                sharedPrefs.edit().putBoolean("ims_registered_slot_$slotIndex", isImsRegistered).commit()
-                try {
-                    val statusFile = java.io.File(context.filesDir, "ims_status_$slotIndex.txt")
-                    statusFile.writeText(isImsRegistered.toString())
-                } catch (e: Exception) {}
+                SlotStatus.writeImsRegistered(context, slotIndex, isImsRegistered)
 
                 if (!isImsRegistered) {
                     allRegistered = false

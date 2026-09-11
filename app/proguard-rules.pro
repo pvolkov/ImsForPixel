@@ -1,13 +1,18 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles settings in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Instrumentation is started by name from `am instrument` and `app_process`.
+-keep class com.pvolkov.imsforpixel.BrokerInstrumentation { *; }
+-keep class com.pvolkov.imsforpixel.ImsQueryTool {
+    public static void main(java.lang.String[]);
+}
+-keep class com.pvolkov.imsforpixel.ImsForPixelApp { *; }
 
-# Keep Shizuku classes
--keep class rikka.shizuku.** { *; }
-
-# Keep AIDL interfaces
+# Telephony binders accessed by reflection from the shell identity.
 -keep interface com.android.internal.telephony.** { *; }
+-keep class com.android.internal.telephony.** { *; }
 -keep class com.android.internal.telephony.**$* { *; }
+-keep class android.os.ServiceManager { *; }
+
+-keep class org.lsposed.hiddenapibypass.** { *; }
+-dontwarn org.lsposed.hiddenapibypass.**
+
+-keep class com.flyfishxu.kadb.** { *; }
+-dontwarn com.flyfishxu.kadb.**
