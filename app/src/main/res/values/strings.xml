@@ -3,46 +3,37 @@
     <string name="app_name">IMS for Pixel</string>
 
     <!-- Notifications: IMS status -->
-    <string name="ims_status_channel">Статус активации IMS</string>
-    <string name="notification_title_all_ok">Активация успешна</string>
-    <string name="notification_title_partial">Активация частичная</string>
+    <string name="ims_status_channel">Статус IMS</string>
+    <string name="ims_status_channel_description">Результат применения настроек оператора</string>
+    <string name="notification_title_all_ok">Настройки применены</string>
+    <string name="notification_title_partial">Применено частично</string>
     <string name="notification_title_none">IMS не зарегистрирован</string>
     <string name="notification_title_restored">Настройки восстановлены</string>
     <string name="notification_ims_ok_short">IMS есть</string>
     <string name="notification_ims_fail_short">нет IMS</string>
-    <string name="notification_ims_registered">IMS зарегистрирован</string>
-    <string name="notification_ims_not_registered">IMS не зарегистрирован</string>
-    <string name="notification_config_applied">конфиг применён</string>
-    <string name="notification_config_default">конфиг по умолчанию</string>
-    <string name="notification_detail_line">%1$s — %2$s, %3$s</string>
+    <string name="notification_short_line">%1$s · %2$s</string>
+    <string name="notification_detail_line">%1$s — %2$s · %3$s</string>
     <string name="notification_summary_two_sims">%1$s · %2$s</string>
-    <string name="notification_hint_dual_sim">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту и снова нажмите «Применить». Либо сделайте эту SIM основной для звонков.</string>
-    <string name="notification_hint_none_registered">IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, включите VoLTE для каждой карты и повторите.</string>
-    <string name="notification_hint_all_ok">VoLTE и VoWiFi должны работать. Статус IMS в приложении можно обновить кнопкой на карточке SIM.</string>
-    <string name="notification_restore_hint">Переопределения оператора сброшены. Проверьте, работают ли звонки.</string>
-    <!-- Legacy notification strings (kept for compatibility) -->
-    <string name="volte_activate_success">VoLTE успешно активирован</string>
-    <string name="volte_activate_done">Активация VoLTE завершена</string>
-    <string name="config_restored_default">Настройки восстановлены по умолчанию</string>
-    <string name="sim1_ims_registered">SIM 1: IMS зарегистрирован</string>
-    <string name="sim1_ims_not_registered">SIM 1: IMS не зарегистрирован</string>
-    <string name="sim2_ims_registered">SIM 2: IMS зарегистрирован</string>
-    <string name="sim2_ims_not_registered">SIM 2: IMS не зарегистрирован</string>
-    <string name="carrier_override_cleared">Переопределение настроек оператора сброшено. Проверьте, работают ли звонки.</string>
+    <string name="notification_hint_dual_sim">На двух SIM IMS часто только на одной. Примените вторую карту отдельно.</string>
+    <string name="notification_hint_none_registered">Проверьте покрытие LTE и снова нажмите «Применить».</string>
+    <string name="notification_hint_all_ok">VoLTE и VoWiFi должны работать.</string>
+    <string name="notification_restore_hint">Конфиг оператора возвращён. Проверьте звонки.</string>
 
     <!-- Notifications: pairing -->
     <string name="notification_permission_required">Для ввода кода сопряжения в уведомлении нужно разрешение на уведомления</string>
-    <string name="pairing_channel">Сопряжение беспроводной отладки</string>
-    <string name="pairing_channel_description">Быстрый ввод кода сопряжения беспроводной отладки из панели уведомлений</string>
-    <string name="pairing_code_hint">Введите 6-значный код сопряжения</string>
-    <string name="send_pairing_code">Отправить код сопряжения</string>
-    <string name="pairing_notification_body">Нажмите «Отправить код сопряжения» ниже и введите 6 цифр</string>
-    <string name="pairing_port_not_found_toast">Порт сопряжения не обнаружен. Убедитесь, что окно сопряжения в системе открыто!</string>
-    <string name="pairing_failed_no_port">Ошибка сопряжения: порт окна сопряжения не обнаружен</string>
-    <string name="pairing_in_background">Сопряжение устройства в фоне…</string>
-    <string name="pairing_port_progress">Сопряжение с портом %1$d…</string>
-    <string name="pairing_success_toast">Сопряжение через уведомление успешно!</string>
-    <string name="pairing_success_return">Сопряжение успешно! Вернитесь в приложение для активации.</string>
+    <string name="pairing_channel">Сопряжение</string>
+    <string name="pairing_channel_description">Ввод кода беспроводной отладки из панели уведомлений</string>
+    <string name="pairing_notification_title">Код сопряжения</string>
+    <string name="pairing_status_title">Сопряжение</string>
+    <string name="pairing_code_hint">Введите 6-значный код</string>
+    <string name="send_pairing_code">Отправить код</string>
+    <string name="pairing_notification_body">Введите 6 цифр из окна беспроводной отладки</string>
+    <string name="pairing_port_not_found_toast">Порт сопряжения не обнаружен. Откройте окно сопряжения в настройках.</string>
+    <string name="pairing_failed_no_port">Порт окна сопряжения не обнаружен</string>
+    <string name="pairing_in_background">Сопряжение в фоне…</string>
+    <string name="pairing_port_progress">Подключение к порту %1$d…</string>
+    <string name="pairing_success_toast">Сопряжение выполнено</string>
+    <string name="pairing_success_return">Сопряжение готово. Можно нажать «Применить».</string>
     <string name="pairing_failed">Ошибка сопряжения: %1$s</string>
 
     <!-- Toasts -->

@@ -44,11 +44,8 @@ import com.pvolkov.imsforpixel.system.ConnectivityMonitor
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import androidx.core.app.NotificationCompat
-import androidx.core.app.RemoteInput
 import android.os.Build
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -145,77 +142,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "pairing_channel",
-                getString(R.string.pairing_channel),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = getString(R.string.pairing_channel_description)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
-    }
-
     private fun showPairingNotification() {
-        createNotificationChannel()
-        
-        val replyLabel = getString(R.string.pairing_code_hint)
-        val remoteInput = androidx.core.app.RemoteInput.Builder("extra_pairing_code")
-            .setLabel(replyLabel)
-            .build()
-            
         val intent = Intent("$packageName.ACTION_PAIR").apply {
             `package` = packageName
         }
-        
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
-        
-        val replyPendingIntent = PendingIntent.getBroadcast(
-            this,
-            0,
-            intent,
-            flags
-        )
-        
-        val action = NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_send,
-            getString(R.string.send_pairing_code),
-            replyPendingIntent
-        )
-            .addRemoteInput(remoteInput)
-            .build()
-            
-        val notification = NotificationCompat.Builder(this, "pairing_channel")
-            .setSmallIcon(R.drawable.ic_stat_ims)
-            .setContentTitle(getString(R.string.pairing_channel))
-            .setContentText(getString(R.string.pairing_notification_body))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .addAction(action)
-            .build()
-            
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(202, notification)
+        val replyPendingIntent = PendingIntent.getBroadcast(this, 0, intent, flags)
+        AppNotifications.showPairingInput(this, replyPendingIntent)
     }
 
     private fun showPairingStatusNotification(text: String) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notification = NotificationCompat.Builder(this, "pairing_channel")
-            .setSmallIcon(R.drawable.ic_stat_ims)
-            .setContentTitle(getString(R.string.pairing_channel))
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-        manager.notify(202, notification)
+        AppNotifications.showPairingStatus(this, text)
     }
 
     private fun handleNotificationPairing(code: String) {
@@ -262,7 +203,7 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {}
         }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.cancel(202)
+        manager.cancel(AppNotifications.PAIRING_ID)
     }
 }
 
