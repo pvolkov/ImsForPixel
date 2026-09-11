@@ -82,13 +82,6 @@ object VolteSettings {
         slot: Int,
         clear: Boolean,
     ): SharedPreferences.Editor {
-        return editor
-            .putBoolean("clear_slot_$slot", clear)
-            .putBoolean("volte_slot_$slot", true)
-            .putBoolean("vonr_slot_$slot", true)
-            .putBoolean("vowifi_slot_$slot", true)
-            .putBoolean("wfc_roaming_slot_$slot", true)
-            .putBoolean("ss_ut_slot_$slot", true)
-            .putBoolean("show_ims_slot_$slot", true)
+        return editor.putBoolean("clear_slot_$slot", clear)
     }
 }

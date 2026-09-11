@@ -45,7 +45,7 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 - **Wi-Fi Calling (VoWiFi)** — Make calls over Wi-Fi
 - **Wi-Fi Calling Roaming** — Keep Wi-Fi calling active while abroad
 - **Supplementary Services (UT)** — Call forwarding, call waiting, etc.
-- **Dual-SIM support** — Independent per-slot configuration
+- **Dual-SIM support** — Apply per slot or to both SIMs
 - **One-tap restore** — Clear all overrides and return to carrier defaults
 - **IMS status on demand** — Refresh from the SIM card after Apply, or with the refresh button (needs Wireless Debugging)
 - **Notification result** — Per-slot IMS registration after apply
@@ -117,8 +117,8 @@ Pairing is a one-time setup. After a successful **Применить**, Android 
 1. Open **IMS for Pixel**.
 2. Tap **Настроить беспроводную отладку** if Wireless Debugging is not on this session.
 3. When the pairing notification appears, enter the **6-digit pairing code** from Wireless Debugging settings.
-4. Configure per-slot toggles as desired (VoLTE, VoNR, VoWiFi, etc.).
-5. Tap **Применить**. Wait up to ~30 seconds. A notification confirms per-slot IMS registration.
+4. Optionally set display icons (4G / LTE+ / VoWiFi label).
+5. Tap **Применить**. Wait up to ~30 seconds. A notification confirms per-slot IMS registration. Day-to-day VoLTE / Wi-Fi calling switches stay in Android settings.
 
 ---
 
@@ -214,7 +214,7 @@ A: Open settings (gear) and tap **Восстановить** to clear overrides 
 A: The app sets `carrier_volte_provisioning_required_bool = false`. This works on most carriers. Carriers with server-side IMS provisioning checks may still fail independently of this app.
 
 **Q: Dual SIM support?**  
-A: Yes. Each active SIM slot is configured independently, with its own IMS badge in the UI. Empty slots are hidden.
+A: Yes. Apply to one SIM or both. Each slot has its own IMS badge. Empty slots are hidden. Day-to-day VoLTE / Wi-Fi calling is controlled in Android settings.
 
 **Q: Why not just use Shizuku?**  
 A: Shizuku is great, but requires a separate app to be installed and running. *IMS for Pixel* is entirely self-contained — one APK, no dependencies on other apps. It uses the same underlying mechanism (Wireless Debugging + shell permission identity) but handles everything internally.

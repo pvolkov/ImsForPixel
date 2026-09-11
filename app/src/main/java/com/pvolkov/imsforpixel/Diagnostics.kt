@@ -46,7 +46,6 @@ object DiagnosticsCollector {
         isAdbAuthorized: Boolean,
         adbPort: String,
     ): List<DiagnosticItem> {
-        val prefs = VolteSettings.prefs(context)
         val items = mutableListOf<DiagnosticItem>()
 
         items += DiagnosticItem(
@@ -72,8 +71,6 @@ object DiagnosticsCollector {
             val carrier = CarrierInfo.getCarrierLabel(context, slot)
             val configApplied = SlotStatus.isConfigApplied(context, slot)
             val ims = SlotStatus.imsState(context, slot)
-            val volte = prefs.getBoolean("volte_slot_$slot", true)
-
             items += DiagnosticItem(
                 label = context.getString(R.string.diag_config_slot, carrier),
                 passed = configApplied,
@@ -93,11 +90,6 @@ object DiagnosticsCollector {
                 },
                 warning = ims == SlotStatus.ImsState.Unknown ||
                     (configApplied && ims == SlotStatus.ImsState.NotRegistered),
-            )
-            items += DiagnosticItem(
-                label = context.getString(R.string.diag_volte_pref_slot, carrier),
-                passed = volte,
-                detail = if (volte) null else context.getString(R.string.diag_volte_pref_off),
             )
         }
 

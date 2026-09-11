@@ -350,9 +350,10 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
             }
 
             item {
-                ConfigPanel(
-                    slotIndex = selectedSimSlot,
-                    onConfigChanged = {},
+                Text(
+                    text = stringResource(R.string.override_persists_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 

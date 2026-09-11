@@ -203,38 +203,30 @@ class BrokerInstrumentation : Instrumentation() {
                     Log.e(TAG, "Failed to clear carrier config reflectively", e)
                 }
             } else {
-                val volte = sharedPrefs.getBoolean("volte_slot_$slotIndex", true)
-                val vonr = sharedPrefs.getBoolean("vonr_slot_$slotIndex", true)
-                val vowifi = sharedPrefs.getBoolean("vowifi_slot_$slotIndex", true)
-                val wfcRoaming = sharedPrefs.getBoolean("wfc_roaming_slot_$slotIndex", true)
-                val ssUt = sharedPrefs.getBoolean("ss_ut_slot_$slotIndex", true)
-                val showIms = sharedPrefs.getBoolean("show_ims_slot_$slotIndex", true)
                 val showLtePlus = VolteSettings.showLtePlus(sharedPrefs)
                 val show4gIcon = VolteSettings.show4gIcon(sharedPrefs)
                 val showVowifiSpn = VolteSettings.showVowifiSpn(sharedPrefs)
                 val bundle = PersistableBundle()
-                // VoLTE enabling & provisioning overrides
-                bundle.putBoolean("carrier_volte_available_bool", volte)
-                bundle.putBoolean("enhanced_4g_lte_on_by_default_bool", volte)
-                bundle.putBoolean("hide_enhanced_4g_lte_bool", !volte)
-                bundle.putBoolean("editable_enhanced_4g_lte_bool", volte)
-                bundle.putBoolean("carrier_volte_provisioned_bool", volte)
+                bundle.putBoolean("carrier_volte_available_bool", true)
+                bundle.putBoolean("enhanced_4g_lte_on_by_default_bool", true)
+                bundle.putBoolean("hide_enhanced_4g_lte_bool", false)
+                bundle.putBoolean("editable_enhanced_4g_lte_bool", true)
+                bundle.putBoolean("carrier_volte_provisioned_bool", true)
                 bundle.putBoolean("carrier_volte_provisioning_required_bool", false)
                 bundle.putBoolean("hide_lte_plus_data_icon_bool", !showLtePlus)
                 bundle.putBoolean("show_4g_for_lte_data_icon_bool", show4gIcon)
 
                 // VoNR (5G Calling) overrides
-                bundle.putBoolean("vonr_enabled_bool", vonr)
-                bundle.putBoolean("vonr_setting_visibility_bool", vonr)
+                bundle.putBoolean("vonr_enabled_bool", true)
+                bundle.putBoolean("vonr_setting_visibility_bool", true)
 
-                // VoWiFi (Wi-Fi Calling) overrides
-                bundle.putBoolean("carrier_wfc_ims_available_bool", vowifi)
-                bundle.putBoolean("carrier_default_wfc_ims_enabled_bool", vowifi)
-                bundle.putBoolean("carrier_wfc_ims_provisioned_bool", vowifi)
-                bundle.putBoolean("editable_wfc_mode_bool", vowifi)
-                bundle.putBoolean("editable_wfc_roaming_mode_bool", vowifi)
-                bundle.putBoolean("carrier_default_wfc_ims_roaming_enabled_bool", wfcRoaming)
-                if (vowifi && showVowifiSpn) {
+                bundle.putBoolean("carrier_wfc_ims_available_bool", true)
+                bundle.putBoolean("carrier_default_wfc_ims_enabled_bool", true)
+                bundle.putBoolean("carrier_wfc_ims_provisioned_bool", true)
+                bundle.putBoolean("editable_wfc_mode_bool", true)
+                bundle.putBoolean("editable_wfc_roaming_mode_bool", true)
+                bundle.putBoolean("carrier_default_wfc_ims_roaming_enabled_bool", true)
+                if (showVowifiSpn) {
                     // Index 6: "%s VoWifi" — shown next to operator name when Wi-Fi calling is active
                     bundle.putInt("wfc_spn_format_idx_int", 6)
                     bundle.putInt("wfc_data_spn_format_idx_int", 6)
@@ -243,11 +235,11 @@ class BrokerInstrumentation : Instrumentation() {
                     bundle.putInt("wfc_data_spn_format_idx_int", 0)
                 }
 
-                bundle.putBoolean("carrier_supports_ss_over_ut_bool", ssUt)
-                bundle.putBoolean("show_ims_registration_status_bool", showIms)
+                bundle.putBoolean("carrier_supports_ss_over_ut_bool", true)
+                bundle.putBoolean("show_ims_registration_status_bool", true)
                 bundle.putBoolean(SlotStatus.OVERRIDE_SENTINEL_KEY, true)
 
-                Log.d(TAG, "Applying config for slot $slotIndex: VoLTE=$volte, VoNR=$vonr, VoWiFi=$vowifi")
+                Log.d(TAG, "Applying full IMS override for slot $slotIndex")
                 
                 try {
                     overrideCarrierConfig(carrierConfigManager, subId, bundle)

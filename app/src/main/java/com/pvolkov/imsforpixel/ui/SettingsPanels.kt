@@ -22,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,65 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.pvolkov.imsforpixel.CarrierInfo
 import com.pvolkov.imsforpixel.R
 import com.pvolkov.imsforpixel.VolteSettings
-
-@Composable
-fun ConfigPanel(
-    slotIndex: Int,
-    onConfigChanged: () -> Unit,
-) {
-    val context = LocalContext.current
-    val prefs = remember(slotIndex) {
-        context.getSharedPreferences(VolteSettings.PREFS_NAME, Context.MODE_PRIVATE)
-    }
-
-    var voLteEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("volte_slot_$slotIndex", true)) }
-    var voNrEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("vonr_slot_$slotIndex", true)) }
-    var voWifiEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("vowifi_slot_$slotIndex", true)) }
-    var wfcRoamingEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("wfc_roaming_slot_$slotIndex", true)) }
-    var ssUtEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("ss_ut_slot_$slotIndex", true)) }
-    var carrierLabel by remember(slotIndex) { mutableStateOf(CarrierInfo.getCarrierLabel(context, slotIndex)) }
-
-    LaunchedEffect(slotIndex) {
-        carrierLabel = CarrierInfo.getCarrierLabel(context, slotIndex)
-    }
-
-    SettingsSectionCard(title = stringResource(R.string.carrier_settings_named, carrierLabel)) {
-        ToggleRow(stringResource(R.string.volte_title), stringResource(R.string.volte_desc), voLteEnabled) {
-            voLteEnabled = it
-            prefs.edit().putBoolean("volte_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-            onConfigChanged()
-        }
-        ToggleRow(stringResource(R.string.vonr_title), stringResource(R.string.vonr_desc), voNrEnabled) {
-            voNrEnabled = it
-            prefs.edit().putBoolean("vonr_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-            onConfigChanged()
-        }
-        ToggleRow(stringResource(R.string.vowifi_title), stringResource(R.string.vowifi_desc), voWifiEnabled) {
-            voWifiEnabled = it
-            prefs.edit().putBoolean("vowifi_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-            onConfigChanged()
-        }
-        ToggleRow(stringResource(R.string.wfc_roaming_title), stringResource(R.string.wfc_roaming_desc), wfcRoamingEnabled) {
-            wfcRoamingEnabled = it
-            prefs.edit().putBoolean("wfc_roaming_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-            onConfigChanged()
-        }
-        ToggleRow(stringResource(R.string.ss_ut_title), stringResource(R.string.ss_ut_desc), ssUtEnabled) {
-            ssUtEnabled = it
-            prefs.edit().putBoolean("ss_ut_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-            onConfigChanged()
-        }
-        Text(
-            text = stringResource(R.string.override_persists_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-    }
-}
 
 @Composable
 fun DisplaySettingsPanel() {

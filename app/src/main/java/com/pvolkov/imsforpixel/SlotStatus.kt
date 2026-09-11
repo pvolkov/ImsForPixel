@@ -28,13 +28,9 @@ object SlotStatus {
                 liveMatchesPrefs = false,
             )
         }
-        val prefs = VolteSettings.prefs(context)
-        val liveMatchesPrefs = config.getBoolean("carrier_volte_available_bool", false) ==
-            prefs.getBoolean("volte_slot_$slotIndex", true) &&
-            config.getBoolean("vonr_enabled_bool", false) ==
-            prefs.getBoolean("vonr_slot_$slotIndex", true) &&
-            config.getBoolean("carrier_wfc_ims_available_bool", false) ==
-            prefs.getBoolean("vowifi_slot_$slotIndex", true)
+        val liveMatchesPrefs = config.getBoolean("carrier_volte_available_bool", false) &&
+            config.getBoolean("vonr_enabled_bool", false) &&
+            config.getBoolean("carrier_wfc_ims_available_bool", false)
         return SlotStatusLogic.isConfigApplied(
             liveAvailable = true,
             hasSentinelKey = config.containsKey(OVERRIDE_SENTINEL_KEY),
