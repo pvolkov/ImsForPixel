@@ -43,23 +43,14 @@
     <string name="developer_options_not_found">Параметры разработчика не найдены</string>
 
     <!-- Main screen -->
-    <string name="sim_card_1">SIM-карта 1</string>
-    <string name="sim_card_2">SIM-карта 2</string>
     <string name="sim_slot_fallback">SIM %1$d</string>
 
     <!-- Config panel -->
-    <string name="carrier_settings_slot">Настройки оператора (слот %1$d)</string>
     <string name="carrier_settings_named">Настройки: %1$s</string>
-    <string name="display_at_carrier_header">Настройки отображения</string>
     <string name="display_settings_header">Значки и отображение</string>
     <string name="display_settings_note">Одинаково для всех SIM. Изменения применятся кнопкой внизу экрана.</string>
     <string name="display_settings_expand">Показать значки и отображение</string>
     <string name="display_settings_collapse">Скрыть значки и отображение</string>
-    <string name="display_settings_apply">Применить ко всем SIM</string>
-    <string name="config_applied">Конфиг: применён</string>
-    <string name="config_system_default">Конфиг: по умолчанию</string>
-    <string name="ims_registered">IMS: зарегистрирован</string>
-    <string name="ims_not_registered">IMS: не зарегистрирован</string>
     <string name="volte_title">VoLTE</string>
     <string name="volte_desc">Голосовые звонки через сеть 4G/LTE+</string>
     <string name="vonr_title">VoNR (5G)</string>
@@ -94,8 +85,6 @@
     <string name="open_wireless_debugging">Открыть беспроводную отладку</string>
     <string name="step3_activate_title">Сброс настроек</string>
     <string name="step3_activate_desc">Вернуть конфиг оператора. Применение — кнопкой внизу главного экрана.</string>
-    <string name="sim1_call_config">Конфигурация SIM 1</string>
-    <string name="sim2_call_config">Конфигурация SIM 2</string>
     <string name="app_optimized">Конфиг применён</string>
     <string name="system_default">По умолчанию</string>
     <string name="ims_registered_short">IMS зарегистрирован</string>
@@ -107,9 +96,6 @@
     <string name="setup_wireless_cta">Настроить беспроводную отладку</string>
     <string name="apply_slot_named">Применить: %1$s</string>
     <string name="apply_all_sims">Применить ко всем SIM</string>
-    <string name="one_tap_activate">Активировать</string>
-    <string name="waiting_for_enable">Ожидание…</string>
-    <string name="one_tap_restore">Восстановить</string>
     <string name="ims_status_hint">Статус IMS обновится через несколько секунд после применения.</string>
     <string name="hide_advanced">Скрыть расширенные настройки</string>
     <string name="show_advanced">Показать расширенные настройки</string>
@@ -117,16 +103,12 @@
     <string name="wireless_debug_settings_cd">Настройки и активация</string>
     <string name="sim_status_overview">Статус SIM-карт</string>
     <string name="sim_status_dual_sim_hint">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту отдельно и снова нажмите «Применить».</string>
-    <string name="wireless_debug_setup_hint">Настройте беспроводную отладку в параметрах сверху справа</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>
 
     <!-- Per-SIM activation -->
-    <string name="activate_this_sim">Активировать эту SIM</string>
-    <string name="activate_both_sims">Активировать обе</string>
     <string name="restore_this_sim">Восстановить эту SIM</string>
     <string name="restore_both_sims">Восстановить обе</string>
-    <string name="activate_slot_named">Применить: %1$s</string>
 
     <!-- Diagnostics -->
     <string name="diagnostics_title">Диагностика</string>
