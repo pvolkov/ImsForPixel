@@ -79,8 +79,9 @@
     <string name="show_vowifi_spn_desc">Показывать «VoWiFi» рядом с названием оператора при звонках через Wi‑Fi</string>
 
     <!-- Wireless debugging card -->
-    <string name="wireless_debug_activation">Активация беспроводной отладки</string>
-    <string name="step1_wifi_title">Шаг 1: подключение к Wi-Fi (обязательно)</string>
+    <string name="wireless_debug_activation">Беспроводная отладка</string>
+    <string name="setup_once_note">Сопряжение нужно один раз. После «Применить» настройки живут без приложения, Wi‑Fi и отладки.</string>
+    <string name="step1_wifi_title">Шаг 1: подключение к Wi-Fi</string>
     <string name="step1_wifi_desc">Для беспроводной отладки телефон должен быть подключён к Wi-Fi</string>
     <string name="connected">Подключено</string>
     <string name="not_connected">Не подключено</string>

@@ -80,9 +80,6 @@ class BrokerInstrumentation : Instrumentation() {
         super.onCreate(arguments)
         Log.d(TAG, "BrokerInstrumentation starting...")
         
-        val queryOnly = arguments?.getString("query_only") == "true" || arguments?.getBoolean("query_only") == true
-        Log.d(TAG, "queryOnly mode: $queryOnly")
-        
         val clearArg = arguments?.getString("clear") == "true" || arguments?.getBoolean("clear") == true
         Log.d(TAG, "clearArg: $clearArg")
 
@@ -124,12 +121,8 @@ class BrokerInstrumentation : Instrumentation() {
                 }
                 
                 try {
-                    if (queryOnly) {
-                        queryStatusOnly()
-                    } else {
-                        patchAllSimsAndPoll(arguments)
-                        showImsStatusNotification(!clearArg)
-                    }
+                    patchAllSimsAndPoll(arguments)
+                    showImsStatusNotification(!clearArg)
                 } finally {
                     if (uiAutomation != null) {
                         try {
@@ -154,44 +147,6 @@ class BrokerInstrumentation : Instrumentation() {
             super.finish(resultCode, results)
         } catch (e: Exception) {
             Log.e(TAG, "Exception during Instrumentation.finish() ignored safely", e)
-        }
-    }
-
-    private fun queryStatusOnly() {
-        val subManager = context.getSystemService(SubscriptionManager::class.java) ?: return
-        val activeSubscriptions = subManager.activeSubscriptionInfoList ?: emptyList()
-        Log.d(TAG, "QueryStatusOnly: Found ${activeSubscriptions.size} active SIMs")
-
-        for (subInfo in activeSubscriptions) {
-            val subId = subInfo.subscriptionId
-            val slotIndex = subInfo.simSlotIndex
-            CarrierInfo.cacheCarrierName(
-                context,
-                slotIndex,
-                subInfo.displayName?.toString() ?: subInfo.carrierName?.toString(),
-            )
-            val isImsRegistered = checkImsRegistered(subId)
-            Log.d(TAG, "QueryStatusOnly: SIM slot $slotIndex IMS Registered: $isImsRegistered")
-            SlotStatus.writeImsRegistered(context, slotIndex, isImsRegistered)
-        }
-    }
-
-    private fun checkImsRegistered(subId: Int): Boolean {
-        return try {
-            val serviceManagerClass = Class.forName("android.os.ServiceManager")
-            val getServiceMethod = serviceManagerClass.getMethod("getService", String::class.java)
-            val binder = getServiceMethod.invoke(null, Context.TELEPHONY_SERVICE) as android.os.IBinder
-            val stubClass = Class.forName("com.android.internal.telephony.ITelephony\$Stub")
-            val asInterfaceMethod = stubClass.getMethod("asInterface", android.os.IBinder::class.java)
-            val telephonyService = asInterfaceMethod.invoke(null, binder)
-            
-            val iTelephonyClass = Class.forName("com.android.internal.telephony.ITelephony")
-            val method = iTelephonyClass.getMethod("isImsRegistered", Int::class.javaPrimitiveType)
-            method.isAccessible = true
-            method.invoke(telephonyService, subId) as Boolean
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to check IMS registration for subId=$subId reflectively", e)
-            false
         }
     }
 
@@ -251,14 +206,12 @@ class BrokerInstrumentation : Instrumentation() {
                 val volte = sharedPrefs.getBoolean("volte_slot_$slotIndex", true)
                 val vonr = sharedPrefs.getBoolean("vonr_slot_$slotIndex", true)
                 val vowifi = sharedPrefs.getBoolean("vowifi_slot_$slotIndex", true)
-                val crossSim = sharedPrefs.getBoolean("cross_sim_slot_$slotIndex", false)
                 val wfcRoaming = sharedPrefs.getBoolean("wfc_roaming_slot_$slotIndex", true)
                 val ssUt = sharedPrefs.getBoolean("ss_ut_slot_$slotIndex", true)
                 val showIms = sharedPrefs.getBoolean("show_ims_slot_$slotIndex", true)
                 val showLtePlus = VolteSettings.showLtePlus(sharedPrefs)
                 val show4gIcon = VolteSettings.show4gIcon(sharedPrefs)
                 val showVowifiSpn = VolteSettings.showVowifiSpn(sharedPrefs)
-                val allowApn = sharedPrefs.getBoolean("allow_apn_slot_$slotIndex", false)
                 val bundle = PersistableBundle()
                 // VoLTE enabling & provisioning overrides
                 bundle.putBoolean("carrier_volte_available_bool", volte)
@@ -290,12 +243,8 @@ class BrokerInstrumentation : Instrumentation() {
                     bundle.putInt("wfc_data_spn_format_idx_int", 0)
                 }
 
-                // Other settings
-                bundle.putBoolean("carrier_cross_sim_ims_available_bool", crossSim)
-                bundle.putBoolean("enable_cross_sim_calling_on_opportunistic_data_bool", crossSim)
                 bundle.putBoolean("carrier_supports_ss_over_ut_bool", ssUt)
                 bundle.putBoolean("show_ims_registration_status_bool", showIms)
-                bundle.putBoolean("allow_adding_apns_bool", allowApn)
                 bundle.putBoolean(SlotStatus.OVERRIDE_SENTINEL_KEY, true)
 
                 Log.d(TAG, "Applying config for slot $slotIndex: VoLTE=$volte, VoNR=$vonr, VoWiFi=$vowifi")
@@ -333,7 +282,7 @@ class BrokerInstrumentation : Instrumentation() {
             for (subInfo in processedSubscriptions) {
                 val subId = subInfo.subscriptionId
                 val slotIndex = subInfo.simSlotIndex
-                val isImsRegistered = checkImsRegistered(subId)
+                val isImsRegistered = ImsRegistration.isRegistered(subId)
                 Log.d(TAG, "Poll $pollsLeft: SIM slot $slotIndex IMS Registered: $isImsRegistered")
                 
                 SlotStatus.writeImsRegistered(context, slotIndex, isImsRegistered)

@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android%2010--17-brightgreen)](https://developer.android.com)
 [![API](https://img.shields.io/badge/minSdk-28-blue)](https://developer.android.com/about/versions/10)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-informational)](app/build.gradle)
+[![Version](https://img.shields.io/badge/version-1.0.1-informational)](app/build.gradle)
 [![Tested](https://img.shields.io/badge/tested-Android%2017-success)](https://developer.android.com)
 
 ---
@@ -47,7 +47,7 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 - **Supplementary Services (UT)** — Call forwarding, call waiting, etc.
 - **Dual-SIM support** — Independent per-slot configuration
 - **One-tap restore** — Clear all overrides and return to carrier defaults
-- **Live IMS status** — Polled about every 8 s while the app is in the foreground and ADB is ready
+- **IMS status on demand** — Refresh from the SIM card after Apply, or with the refresh button (needs Wireless Debugging)
 - **Notification result** — Per-slot IMS registration after apply
 - **Tested on Android 10 – 17**
 - No root required
@@ -82,7 +82,7 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 2. It launches `BrokerInstrumentation` via `am instrument --no-restart` (Android 11+), which runs under the `shell` permission identity — the same mechanism Shizuku uses, but self-contained.
 3. `BrokerInstrumentation` calls `CarrierConfigManager.overrideConfig` with `persistent = true`, resets IMS, and polls registration for up to 30 seconds.
 4. On completion, a **notification** reports the real per-slot IMS registration result.
-5. While the app is in the foreground and ADB is authorized, `ImsQueryTool` refreshes the in-app IMS badges about every 8 seconds.
+5. After Apply, `BrokerInstrumentation` polls IMS for up to 30 seconds and posts a notification. Opening the app does not connect to ADB until you tap Apply or refresh.
 
 ---
 
@@ -110,13 +110,15 @@ By merging these two ideas, **IMS for Pixel** is simpler and more convenient tha
 
 Download the latest APK from [Releases](../../releases) and install it, or build from source (see [Building](#building)).
 
-### 3. Pair & Apply
+### 3. Pair & Apply (once)
+
+Pairing is a one-time setup. After a successful **Применить**, Android keeps the override across reboots — no app, Wi-Fi, or Wireless Debugging needed until you change SIM or get an OTA.
 
 1. Open **IMS for Pixel**.
-2. Tap **Настроить беспроводную отладку** (or the settings icon) if Wireless Debugging is not ready yet.
+2. Tap **Настроить беспроводную отладку** if Wireless Debugging is not on this session.
 3. When the pairing notification appears, enter the **6-digit pairing code** from Wireless Debugging settings.
 4. Configure per-slot toggles as desired (VoLTE, VoNR, VoWiFi, etc.).
-5. Tap **Применить**. Wait up to ~30 seconds. A system notification confirms success with per-slot IMS registration status.
+5. Tap **Применить**. Wait up to ~30 seconds. A notification confirms per-slot IMS registration.
 
 ---
 
@@ -154,7 +156,9 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ```
 app/src/main/java/com/pvolkov/imsforpixel/
-├── MainActivity.kt              # Compose UI, ADB pairing, foreground IMS polling
+├── MainActivity.kt              # Pairing receiver, permissions
+├── ui/MainScreen.kt             # Main Compose screen
+├── ui/WirelessDebug.kt          # ADB discovery, setup sheet, Apply bar
 ├── BrokerInstrumentation.kt     # Shell-identity runner: override, poll, notify
 ├── ImsQueryTool.kt              # app_process entry point for IMS status
 ├── SlotStatus.kt                # Live config / IMS status (incl. after reboot)
@@ -164,7 +168,8 @@ app/src/main/java/com/pvolkov/imsforpixel/
 
 | File | Role |
 |---|---|
-| `MainActivity.kt` | Material 3 UI, Kadb client, foreground IMS refresh |
+| `MainActivity.kt` | Pairing from the notification, runtime permissions |
+| `ui/MainScreen.kt` | Material 3 UI and Apply / refresh actions |
 | `BrokerInstrumentation.kt` | Privileged runner — persistent `overrideConfig`, IMS reset, notification |
 | `ImsQueryTool.kt` | Minimal `app_process` entry point — IMS state without UiAutomation |
 | `SlotStatus.kt` | Whether our override is active; stale IMS after reboot |

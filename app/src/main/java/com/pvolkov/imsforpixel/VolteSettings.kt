@@ -56,4 +56,39 @@ object VolteSettings {
     fun setAdbPaired(context: Context, paired: Boolean) {
         prefs(context).edit().putBoolean("adb_paired", paired).apply()
     }
+
+    fun resetSlotToDefaults(prefs: SharedPreferences, slot: Int) {
+        writeSlotDefaults(prefs.edit(), slot, clear = true).commit()
+    }
+
+    fun resetBothSlotsToDefaults(prefs: SharedPreferences) {
+        val editor = prefs.edit()
+        for (slot in 0..1) writeSlotDefaults(editor, slot, clear = true)
+        editor.commit()
+    }
+
+    fun markSlotsForApply(prefs: SharedPreferences, slot: Int?) {
+        val editor = prefs.edit()
+        if (slot != null) {
+            editor.putBoolean("clear_slot_$slot", false)
+        } else {
+            editor.putBoolean("clear_slot_0", false).putBoolean("clear_slot_1", false)
+        }
+        editor.commit()
+    }
+
+    private fun writeSlotDefaults(
+        editor: SharedPreferences.Editor,
+        slot: Int,
+        clear: Boolean,
+    ): SharedPreferences.Editor {
+        return editor
+            .putBoolean("clear_slot_$slot", clear)
+            .putBoolean("volte_slot_$slot", true)
+            .putBoolean("vonr_slot_$slot", true)
+            .putBoolean("vowifi_slot_$slot", true)
+            .putBoolean("wfc_roaming_slot_$slot", true)
+            .putBoolean("ss_ut_slot_$slot", true)
+            .putBoolean("show_ims_slot_$slot", true)
+    }
 }

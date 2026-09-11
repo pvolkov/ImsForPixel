@@ -3,6 +3,7 @@
 -keep class com.pvolkov.imsforpixel.ImsQueryTool {
     public static void main(java.lang.String[]);
 }
+-keep class com.pvolkov.imsforpixel.ImsRegistration { *; }
 -keep class com.pvolkov.imsforpixel.ImsForPixelApp { *; }
 
 # Telephony binders accessed by reflection from the shell identity.

@@ -18,18 +18,30 @@ object SlotStatus {
 
     fun isConfigApplied(context: Context, slotIndex: Int): Boolean {
         val fileApplied = readFlag(context, configFileName(slotIndex))
-        val config = carrierConfigForSlot(context, slotIndex) ?: return fileApplied
-        if (config.containsKey(OVERRIDE_SENTINEL_KEY)) {
-            return config.getBoolean(OVERRIDE_SENTINEL_KEY, false)
+        val config = carrierConfigForSlot(context, slotIndex)
+        if (config == null) {
+            return SlotStatusLogic.isConfigApplied(
+                liveAvailable = false,
+                hasSentinelKey = false,
+                sentinelValue = false,
+                fileApplied = fileApplied,
+                liveMatchesPrefs = false,
+            )
         }
-        if (!fileApplied) return false
         val prefs = VolteSettings.prefs(context)
-        return config.getBoolean("carrier_volte_available_bool", false) ==
+        val liveMatchesPrefs = config.getBoolean("carrier_volte_available_bool", false) ==
             prefs.getBoolean("volte_slot_$slotIndex", true) &&
             config.getBoolean("vonr_enabled_bool", false) ==
             prefs.getBoolean("vonr_slot_$slotIndex", true) &&
             config.getBoolean("carrier_wfc_ims_available_bool", false) ==
             prefs.getBoolean("vowifi_slot_$slotIndex", true)
+        return SlotStatusLogic.isConfigApplied(
+            liveAvailable = true,
+            hasSentinelKey = config.containsKey(OVERRIDE_SENTINEL_KEY),
+            sentinelValue = config.getBoolean(OVERRIDE_SENTINEL_KEY, false),
+            fileApplied = fileApplied,
+            liveMatchesPrefs = liveMatchesPrefs,
+        )
     }
 
     fun presentSlots(context: Context): List<Int> {
@@ -62,14 +74,16 @@ object SlotStatus {
 
     fun imsState(context: Context, slotIndex: Int): ImsState {
         val file = java.io.File(context.filesDir, imsFileName(slotIndex))
-        if (!file.exists() || file.lastModified() < bootTimeMillis()) {
-            return ImsState.Unknown
-        }
-        return try {
-            if (file.readText().trim().toBoolean()) ImsState.Registered else ImsState.NotRegistered
+        val content = try {
+            if (file.exists()) file.readText() else null
         } catch (_: Exception) {
-            ImsState.Unknown
+            null
         }
+        return SlotStatusLogic.imsState(
+            fileLastModified = if (file.exists()) file.lastModified() else null,
+            content = content,
+            bootTimeMillis = bootTimeMillis(),
+        )
     }
 
     fun writeConfigApplied(context: Context, slotIndex: Int, applied: Boolean) {
