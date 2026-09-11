@@ -639,12 +639,7 @@ fun SimStatusOverview(
                 SimStatusTile(
                     modifier = Modifier.fillMaxWidth(),
                     title = carrierOf(slot),
-                    configLabel = if (appliedOf(slot)) {
-                        stringResource(R.string.app_optimized)
-                    } else {
-                        stringResource(R.string.system_default)
-                    },
-                    configTone = if (appliedOf(slot)) StatusTone.Success else StatusTone.Neutral,
+                    configLabel = if (appliedOf(slot)) stringResource(R.string.app_optimized) else null,
                     imsLabel = imsStateLabel(imsOf(slot)),
                     imsTone = imsStateTone(imsOf(slot)),
                 )
@@ -657,12 +652,7 @@ fun SimStatusOverview(
                         SimStatusTile(
                             modifier = Modifier.weight(1f),
                             title = carrierOf(slot),
-                            configLabel = if (appliedOf(slot)) {
-                                stringResource(R.string.app_optimized)
-                            } else {
-                                stringResource(R.string.system_default)
-                            },
-                            configTone = if (appliedOf(slot)) StatusTone.Success else StatusTone.Neutral,
+                            configLabel = if (appliedOf(slot)) stringResource(R.string.app_optimized) else null,
                             imsLabel = imsStateLabel(imsOf(slot)),
                             imsTone = imsStateTone(imsOf(slot)),
                         )
@@ -1242,8 +1232,7 @@ private fun ApplyBottomBar(
 @Composable
 private fun SimStatusTile(
     title: String,
-    configLabel: String,
-    configTone: StatusTone,
+    configLabel: String?,
     imsLabel: String,
     imsTone: StatusTone,
     modifier: Modifier = Modifier,
@@ -1268,8 +1257,10 @@ private fun SimStatusTile(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            StatusChip(label = configLabel, tone = configTone)
-            Spacer(modifier = Modifier.height(4.dp))
+            if (configLabel != null) {
+                StatusChip(label = configLabel, tone = StatusTone.Success)
+                Spacer(modifier = Modifier.height(4.dp))
+            }
             StatusChip(label = imsLabel, tone = imsTone)
         }
     }
