@@ -46,4 +46,14 @@ object VolteSettings {
         val port = prefs(context).getInt("last_adb_port", -1)
         return port.takeIf { it in 1..65535 }
     }
+
+    fun isAdbPaired(context: Context): Boolean {
+        val prefs = prefs(context)
+        if (prefs.contains("adb_paired")) return prefs.getBoolean("adb_paired", false)
+        return getLastAdbPort(context) != null
+    }
+
+    fun setAdbPaired(context: Context, paired: Boolean) {
+        prefs(context).edit().putBoolean("adb_paired", paired).apply()
+    }
 }

@@ -3,7 +3,6 @@ package com.pvolkov.imsforpixel
 import android.Manifest
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,7 +23,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,7 +33,6 @@ import com.pvolkov.imsforpixel.ui.components.StatusChip
 import com.pvolkov.imsforpixel.ui.components.StatusTone
 import com.pvolkov.imsforpixel.ui.theme.ImsForPixelTheme
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.content.Intent
@@ -243,6 +240,7 @@ class MainActivity : ComponentActivity() {
             withContext(Dispatchers.Main) {
                 result.fold(
                     onSuccess = {
+                        VolteSettings.setAdbPaired(this@MainActivity, true)
                         Toast.makeText(this@MainActivity, getString(R.string.pairing_success_toast), Toast.LENGTH_LONG).show()
                         showPairingStatusNotification(getString(R.string.pairing_success_return))
                         onAuthStatusChanged?.invoke()
@@ -277,10 +275,9 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         mutableStateOf(VolteSettings.getLastAdbPort(context)?.toString() ?: "")
     }
     var isApplying by remember { mutableStateOf(false) }
-    val isInstrumenting = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+    var isRefreshingIms by remember { mutableStateOf(false) }
     val isWifiConnected = remember { mutableStateOf(false) }
-    val isAuthorized = remember { mutableStateOf(false) }
-    var authTick by remember { mutableStateOf(0L) }
+    val isAuthorized = remember { mutableStateOf(VolteSettings.isAdbPaired(context)) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var isForeground by remember { mutableStateOf(false) }
@@ -306,7 +303,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
 
     DisposableEffect(Unit) {
         MainActivity.onAuthStatusChanged = {
-            authTick = System.currentTimeMillis()
+            isAuthorized.value = VolteSettings.isAdbPaired(context)
             recheckSignal.value = System.currentTimeMillis()
         }
         MainActivity.onPermissionsChanged = {
@@ -315,54 +312,6 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         onDispose {
             MainActivity.onAuthStatusChanged = null
             MainActivity.onPermissionsChanged = null
-        }
-    }
-
-    LaunchedEffect(portInput, isForeground, isAuthorized.value) {
-        if (!isForeground || !isAuthorized.value) return@LaunchedEffect
-        val port = portInput.toIntOrNull() ?: return@LaunchedEffect
-        if (port !in 1..65535) return@LaunchedEffect
-        withContext(Dispatchers.IO) {
-            var activeKadb: Kadb? = null
-            try {
-                while (true) {
-                    if (!isInstrumenting.get()) {
-                        try {
-                            val kadb = activeKadb ?: Kadb.create("127.0.0.1", port, 5000, 5000).also { activeKadb = it }
-                            val appId = BuildConfig.APPLICATION_ID
-                            val pathRes = kadb.shell("pm path $appId")
-                            if (pathRes.exitCode == 0) {
-                                val path = pathRes.output.trim().substringAfter("package:")
-                                if (path.isNotEmpty()) {
-                                    val queryCmd = "export CLASSPATH=$path; app_process /system/bin ${appId}.ImsQueryTool"
-                                    val queryRes = kadb.shell(queryCmd)
-                                    if (queryRes.exitCode == 0) {
-                                        for (line in queryRes.output.lines()) {
-                                            if (!line.startsWith("RESULT:")) continue
-                                            val parts = line.split(":")
-                                            if (parts.size != 3) continue
-                                            val slot = parts[1].toIntOrNull() ?: continue
-                                            val isImsRegistered = parts[2].trim().toBoolean()
-                                            SlotStatus.writeImsRegistered(context, slot, isImsRegistered)
-                                            Log.d("LocalAdb", "Updated slot $slot IMS status: $isImsRegistered")
-                                        }
-                                        withContext(Dispatchers.Main) {
-                                            recheckSignal.value = System.currentTimeMillis()
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.d("LocalAdb", "Error in background IMS check: ${e.message}")
-                            try { activeKadb?.close() } catch (_: Exception) {}
-                            activeKadb = null
-                        }
-                    }
-                    delay(8_000)
-                }
-            } finally {
-                try { activeKadb?.close() } catch (_: Exception) {}
-            }
         }
     }
 
@@ -380,6 +329,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     val response = kadb.shell(cmd)
                     if (response.exitCode == 0) {
                         VolteSettings.setLastAdbPort(context, port)
+                        VolteSettings.setAdbPaired(context, true)
                         Result.success(Unit)
                     } else {
                         Result.failure(Exception("Exit code ${response.exitCode}: ${response.output}"))
@@ -437,13 +387,12 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         }
 
         isApplying = true
-        isInstrumenting.set(true)
         scope.launch {
             val result = runInstrument(port, clear, slot)
             isApplying = false
-            isInstrumenting.set(false)
             result.fold(
                 onSuccess = {
+                    isAuthorized.value = true
                     recheckSignal.value = System.currentTimeMillis()
                 },
                 onFailure = { error ->
@@ -454,13 +403,37 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         }
     }
 
+    fun refreshImsStatus() {
+        val port = portInput.toIntOrNull()
+        if (port == null || port !in 1..65535) {
+            Toast.makeText(context, context.getString(R.string.enable_wireless_debugging_first), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isApplying || isRefreshingIms) return
+        isRefreshingIms = true
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { AdbImsQuery.query(context, port) }
+            isRefreshingIms = false
+            result.fold(
+                onSuccess = {
+                    isAuthorized.value = true
+                    recheckSignal.value = System.currentTimeMillis()
+                },
+                onFailure = { error ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.refresh_ims_failed, error.message ?: ""),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+            )
+        }
+    }
+
     WirelessDebugEffects(
-        portInput = portInput,
         onPortInputChange = { portInput = it },
         isWifiConnected = isWifiConnected,
-        isAuthorized = isAuthorized,
         isForeground = isForeground,
-        authTick = authTick,
     )
 
     if (showWirelessDebugSheet) {
@@ -515,13 +488,11 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
     }
     val dualSim = visibleSlots.size > 1
     val selectedLabel = CarrierInfo.getCarrierLabel(context, selectedSimSlot)
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val setupReady = isWifiConnected.value && hasAdbReady
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
                         stringResource(R.string.app_name),
@@ -561,11 +532,9 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                         }
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
                 ),
-                scrollBehavior = scrollBehavior,
             )
         },
         bottomBar = {
@@ -593,6 +562,8 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 SimStatusOverview(
                     recheckSignal = recheckSignal,
                     visibleSlots = visibleSlots,
+                    isRefreshing = isRefreshingIms,
+                    onRefresh = { refreshImsStatus() },
                 )
             }
 
@@ -664,6 +635,8 @@ fun SimSelectorTabs(
 fun SimStatusOverview(
     recheckSignal: MutableState<Long>,
     visibleSlots: List<Int>,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
 ) {
     val context = LocalContext.current
     var slot0Ims by remember { mutableStateOf(SlotStatus.ImsState.Unknown) }
@@ -692,11 +665,34 @@ fun SimStatusOverview(
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.sim_status_overview),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.sim_status_overview),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onRefresh,
+                    enabled = !isRefreshing,
+                ) {
+                    if (isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.refresh_ims_cd),
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             if (visibleSlots.size <= 1) {
                 val slot = visibleSlots.firstOrNull() ?: 0
                 SimStatusTile(
@@ -955,41 +951,11 @@ fun ToggleRow(
 
 @Composable
 fun WirelessDebugEffects(
-    portInput: String,
     onPortInputChange: (String) -> Unit,
     isWifiConnected: MutableState<Boolean>,
-    isAuthorized: MutableState<Boolean>,
     isForeground: Boolean,
-    authTick: Long,
 ) {
     val context = LocalContext.current
-
-    LaunchedEffect(portInput, isForeground, authTick) {
-        if (!isForeground) return@LaunchedEffect
-        val port = portInput.toIntOrNull()
-        if (port == null || port !in 1..65535) {
-            isAuthorized.value = false
-            return@LaunchedEffect
-        }
-        withContext(Dispatchers.IO) {
-            try {
-                Kadb.create("127.0.0.1", port, 3000, 3000).use { kadb ->
-                    val response = kadb.shell("echo 1")
-                    val authorized = response.exitCode == 0
-                    withContext(Dispatchers.Main) {
-                        isAuthorized.value = authorized
-                    }
-                    if (authorized) {
-                        VolteSettings.setLastAdbPort(context, port)
-                    }
-                }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    isAuthorized.value = false
-                }
-            }
-        }
-    }
 
     DisposableEffect(Unit) {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -1021,8 +987,8 @@ fun WirelessDebugEffects(
         }
     }
 
-    LaunchedEffect(isForeground, isAuthorized.value) {
-        if (!isForeground || isAuthorized.value) return@LaunchedEffect
+    LaunchedEffect(isForeground) {
+        if (!isForeground) return@LaunchedEffect
         AdbDiscovery(context).discover().collect { endpoint ->
             when (endpoint) {
                 is AdbEndpoint.Connect -> onPortInputChange(endpoint.port.toString())
@@ -1275,6 +1241,42 @@ private fun ApplyBottomBar(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.setup_wireless_cta))
                 }
+            } else if (dualSim) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onApplySlot,
+                        enabled = !isApplying,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (isApplying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(
+                                stringResource(R.string.apply_slot_named, selectedLabel),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onApplyAll,
+                        enabled = !isApplying,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            stringResource(R.string.apply_all_sims),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             } else {
                 Button(
                     onClick = onApplySlot,
@@ -1289,15 +1291,6 @@ private fun ApplyBottomBar(
                         )
                     } else {
                         Text(stringResource(R.string.apply_slot_named, selectedLabel))
-                    }
-                }
-                if (dualSim) {
-                    TextButton(
-                        onClick = onApplyAll,
-                        enabled = !isApplying,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.apply_all_sims))
                     }
                 }
             }

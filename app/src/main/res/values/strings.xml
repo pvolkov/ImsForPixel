@@ -18,7 +18,7 @@
     <string name="notification_summary_two_sims">%1$s · %2$s</string>
     <string name="notification_hint_dual_sim">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту и снова нажмите «Применить». Либо сделайте эту SIM основной для звонков.</string>
     <string name="notification_hint_none_registered">IMS не поднялся ни на одной SIM. Проверьте покрытие LTE, включите VoLTE для каждой карты и повторите.</string>
-    <string name="notification_hint_all_ok">VoLTE и VoWiFi должны работать. Статус в приложении обновится автоматически.</string>
+    <string name="notification_hint_all_ok">VoLTE и VoWiFi должны работать. Статус IMS в приложении можно обновить кнопкой на карточке SIM.</string>
     <string name="notification_restore_hint">Переопределения оператора сброшены. Проверьте, работают ли звонки.</string>
     <!-- Legacy notification strings (kept for compatibility) -->
     <string name="volte_activate_success">VoLTE успешно активирован</string>
@@ -109,7 +109,9 @@
     <string name="ims_registered_short">IMS зарегистрирован</string>
     <string name="ims_not_registered_short">IMS не зарегистрирован</string>
     <string name="ims_unknown_short">IMS: нет данных</string>
-    <string name="ims_status_stale_hint">Статус IMS обновляется, когда включена беспроводная отладка.</string>
+    <string name="ims_status_stale_hint">Статус IMS неизвестен после перезагрузки. Включите беспроводную отладку и нажмите обновление.</string>
+    <string name="refresh_ims_cd">Обновить статус IMS</string>
+    <string name="refresh_ims_failed">Не удалось обновить IMS: %1$s</string>
     <string name="setup_wireless_cta">Настроить беспроводную отладку</string>
     <string name="apply_slot_named">Применить: %1$s</string>
     <string name="apply_all_sims">Применить ко всем SIM</string>
@@ -155,5 +157,4 @@
     <string name="diag_volte_pref_off">выключен в настройках</string>
     <string name="diag_copy_report">Скопировать отчёт</string>
     <string name="diag_copied">Отчёт скопирован</string>
-    <string name="polling_paused_hint">Опрос IMS приостановлен в фоне</string>
 </resources>
