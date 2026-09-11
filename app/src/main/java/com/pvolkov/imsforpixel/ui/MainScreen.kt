@@ -203,6 +203,7 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
         },
         isWifiConnected = isWifiConnected,
         isForeground = isForeground,
+        keepDiscovering = !isAuthorized.value,
     )
 
     val hasAdbReady = isAuthorized.value && portInput.isNotEmpty() && portLiveThisSession
@@ -336,16 +337,10 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                 SimStatusOverview(
                     recheckSignal = recheckSignal,
                     visibleSlots = visibleSlots,
-                    isRefreshing = isRefreshingIms,
-                    onRefresh = { refreshImsStatus() },
-                )
-            }
-
-            item {
-                SimSelectorTabs(
-                    slots = visibleSlots,
                     selectedSlot = selectedSimSlot,
                     onSlotSelected = { selectedSimSlot = it },
+                    isRefreshing = isRefreshingIms,
+                    onRefresh = { refreshImsStatus() },
                 )
             }
 

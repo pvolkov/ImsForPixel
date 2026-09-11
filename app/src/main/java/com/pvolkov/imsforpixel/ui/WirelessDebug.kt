@@ -59,6 +59,7 @@ fun WirelessDebugEffects(
     onPortDiscovered: (Int) -> Unit,
     isWifiConnected: MutableState<Boolean>,
     isForeground: Boolean,
+    keepDiscovering: Boolean,
 ) {
     val context = LocalContext.current
 
@@ -92,8 +93,8 @@ fun WirelessDebugEffects(
         }
     }
 
-    LaunchedEffect(isForeground) {
-        if (!isForeground) return@LaunchedEffect
+    LaunchedEffect(isForeground, keepDiscovering) {
+        if (!isForeground && !keepDiscovering) return@LaunchedEffect
         AdbDiscovery(context).discover().collect { endpoint ->
             when (endpoint) {
                 is AdbEndpoint.Connect -> onPortDiscovered(endpoint.port)

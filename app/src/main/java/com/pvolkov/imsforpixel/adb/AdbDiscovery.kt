@@ -7,6 +7,8 @@ import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface AdbEndpoint {
     val port: Int
@@ -36,6 +38,12 @@ class AdbDiscovery(context: Context) {
         awaitClose {
             runCatching { nsdManager.stopServiceDiscovery(connectListener) }
             runCatching { nsdManager.stopServiceDiscovery(pairingListener) }
+        }
+    }
+
+    suspend fun awaitPairingPort(timeoutMs: Long = 8_000): Int? {
+        return withTimeoutOrNull(timeoutMs) {
+            discover().first { it is AdbEndpoint.Pairing }.port
         }
     }
 

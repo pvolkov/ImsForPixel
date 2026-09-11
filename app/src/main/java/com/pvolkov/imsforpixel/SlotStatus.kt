@@ -28,8 +28,18 @@ object SlotStatus {
                 liveMatchesPrefs = false,
             )
         }
+        val usable = config.containsKey("carrier_volte_available_bool") ||
+            config.containsKey("carrier_wfc_ims_available_bool")
+        if (!usable) {
+            return SlotStatusLogic.isConfigApplied(
+                liveAvailable = false,
+                hasSentinelKey = false,
+                sentinelValue = false,
+                fileApplied = fileApplied,
+                liveMatchesPrefs = false,
+            )
+        }
         val liveMatchesPrefs = config.getBoolean("carrier_volte_available_bool", false) &&
-            config.getBoolean("vonr_enabled_bool", false) &&
             config.getBoolean("carrier_wfc_ims_available_bool", false)
         return SlotStatusLogic.isConfigApplied(
             liveAvailable = true,

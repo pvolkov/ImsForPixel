@@ -31,6 +31,7 @@
     <string name="pairing_port_not_found_toast">Порт сопряжения не обнаружен. Откройте окно сопряжения в настройках.</string>
     <string name="pairing_failed_no_port">Порт окна сопряжения не обнаружен</string>
     <string name="pairing_in_background">Сопряжение в фоне…</string>
+    <string name="pairing_waiting_for_port">Ищем окно сопряжения… Оставьте его открытым.</string>
     <string name="pairing_port_progress">Подключение к порту %1$d…</string>
     <string name="pairing_success_toast">Сопряжение выполнено</string>
     <string name="pairing_success_return">Сопряжение готово. Можно нажать «Применить».</string>
@@ -91,6 +92,7 @@
     <string name="adb_port_label">Порт подключения (ADB)</string>
     <string name="wireless_debug_settings_cd">Настройки и активация</string>
     <string name="sim_status_overview">Статус SIM-карт</string>
+    <string name="sim_select_hint">Нажмите карту — к ней относится кнопка «Применить».</string>
     <string name="sim_status_dual_sim_hint">На двух SIM IMS часто регистрируется только на одной. Настройте вторую карту отдельно и снова нажмите «Применить».</string>
     <string name="adb_status_ready">ADB: готов</string>
     <string name="adb_status_not_ready">ADB: не настроен</string>

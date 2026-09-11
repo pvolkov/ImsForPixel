@@ -1,5 +1,6 @@
 package com.pvolkov.imsforpixel.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,21 +9,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -33,8 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pvolkov.imsforpixel.CarrierInfo
 import com.pvolkov.imsforpixel.R
@@ -42,37 +46,12 @@ import com.pvolkov.imsforpixel.SlotStatus
 import com.pvolkov.imsforpixel.ui.components.StatusChip
 import com.pvolkov.imsforpixel.ui.components.StatusTone
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SimSelectorTabs(
-    slots: List<Int>,
-    selectedSlot: Int,
-    onSlotSelected: (Int) -> Unit,
-) {
-    if (slots.size <= 1) return
-    val context = LocalContext.current
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        slots.forEachIndexed { index, slot ->
-            SegmentedButton(
-                selected = selectedSlot == slot,
-                onClick = { onSlotSelected(slot) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = slots.size),
-                label = {
-                    Text(
-                        CarrierInfo.getCarrierLabel(context, slot),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-            )
-        }
-    }
-}
-
 @Composable
 fun SimStatusOverview(
     recheckSignal: MutableState<Long>,
     visibleSlots: List<Int>,
+    selectedSlot: Int,
+    onSlotSelected: (Int) -> Unit,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
 ) {
@@ -152,9 +131,17 @@ fun SimStatusOverview(
                             configLabel = if (appliedOf(slot)) stringResource(R.string.app_optimized) else null,
                             imsLabel = imsStateLabel(imsOf(slot)),
                             imsTone = imsStateTone(imsOf(slot)),
+                            selected = selectedSlot == slot,
+                            onSelect = { onSlotSelected(slot) },
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.sim_select_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             val visibleIms = visibleSlots.map { imsOf(it) }
@@ -199,11 +186,34 @@ private fun SimStatusTile(
     imsLabel: String,
     imsTone: StatusTone,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    onSelect: (() -> Unit)? = null,
 ) {
+    val selectable = onSelect != null
+    val colors = MaterialTheme.colorScheme
+    val containerColor = when {
+        selectable && selected -> colors.primaryContainer.copy(alpha = 0.55f)
+        else -> colors.surfaceVariant.copy(alpha = 0.5f)
+    }
+    val border = when {
+        selectable && selected -> BorderStroke(2.dp, colors.primary)
+        selectable -> BorderStroke(1.dp, colors.outlineVariant)
+        else -> null
+    }
+
     Surface(
-        modifier = modifier,
+        modifier = if (selectable) {
+            modifier.selectable(
+                selected = selected,
+                onClick = onSelect,
+                role = Role.RadioButton,
+            )
+        } else {
+            modifier
+        },
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = containerColor,
+        border = border,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -211,14 +221,38 @@ private fun SimStatusTile(
                 .fillMaxWidth()
                 .padding(12.dp),
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
+            if (selectable) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = null,
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.primary,
+                            ),
+                        )
+                    }
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selected) colors.onPrimaryContainer else colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             if (configLabel != null) {
                 StatusChip(label = configLabel, tone = StatusTone.Success)

@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.core.app.RemoteInput
 import androidx.lifecycle.lifecycleScope
 import com.flyfishxu.kadb.Kadb
+import com.pvolkov.imsforpixel.adb.AdbDiscovery
 import com.pvolkov.imsforpixel.ui.MainScreen
 import com.pvolkov.imsforpixel.ui.theme.ImsForPixelTheme
 import kotlinx.coroutines.Dispatchers
@@ -124,19 +125,36 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationPairing(code: String) {
-        val port = PairingSession.pairingPort
-        if (port == null) {
-            Toast.makeText(this, getString(R.string.pairing_port_not_found_toast), Toast.LENGTH_LONG).show()
-            AppNotifications.showPairingStatus(this, getString(R.string.pairing_failed_no_port))
-            return
-        }
-
         Toast.makeText(this, getString(R.string.pairing_in_background), Toast.LENGTH_SHORT).show()
-        AppNotifications.showPairingStatus(this, getString(R.string.pairing_port_progress, port))
+        AppNotifications.showPairingStatus(this, getString(R.string.pairing_waiting_for_port))
 
         lifecycleScope.launch(Dispatchers.IO) {
+            val port = PairingSession.pairingPort
+                ?: AdbDiscovery(this@MainActivity).awaitPairingPort()
+            if (port == null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.pairing_port_not_found_toast),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    AppNotifications.showPairingStatus(
+                        this@MainActivity,
+                        getString(R.string.pairing_failed_no_port),
+                    )
+                }
+                return@launch
+            }
+            PairingSession.pairingPort = port
+            withContext(Dispatchers.Main) {
+                AppNotifications.showPairingStatus(
+                    this@MainActivity,
+                    getString(R.string.pairing_port_progress, port),
+                )
+            }
+
             val result = try {
-                Kadb.pair("127.0.0.1", port, code, filesDir.absolutePath)
+                Kadb.pair("127.0.0.1", port, code, getString(R.string.app_name))
                 Result.success(Unit)
             } catch (e: Exception) {
                 Result.failure(e)
