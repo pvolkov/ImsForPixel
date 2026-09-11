@@ -182,6 +182,7 @@ class BrokerInstrumentation : Instrumentation() {
 
     private fun patchAllSimsAndPoll(arguments: Bundle?) {
         val sharedPrefs = context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE)
+        VolteSettings.migrateDisplaySettings(sharedPrefs)
         val subManager = context.getSystemService(SubscriptionManager::class.java) ?: return
         val carrierConfigManager = context.getSystemService(CarrierConfigManager::class.java) ?: return
         val telephonyManager = context.getSystemService(TelephonyManager::class.java) ?: return
@@ -259,8 +260,9 @@ class BrokerInstrumentation : Instrumentation() {
                 val wfcRoaming = sharedPrefs.getBoolean("wfc_roaming_slot_$slotIndex", true)
                 val ssUt = sharedPrefs.getBoolean("ss_ut_slot_$slotIndex", true)
                 val showIms = sharedPrefs.getBoolean("show_ims_slot_$slotIndex", true)
-                val showLtePlus = sharedPrefs.getBoolean("show_lte_plus_slot_$slotIndex", true)
-                val showVowifiSpn = sharedPrefs.getBoolean("show_vowifi_spn_slot_$slotIndex", true)
+                val showLtePlus = VolteSettings.showLtePlus(sharedPrefs)
+                val show4gIcon = VolteSettings.show4gIcon(sharedPrefs)
+                val showVowifiSpn = VolteSettings.showVowifiSpn(sharedPrefs)
                 val allowApn = sharedPrefs.getBoolean("allow_apn_slot_$slotIndex", false)
                 val bundle = PersistableBundle()
                 // VoLTE enabling & provisioning overrides
@@ -271,6 +273,7 @@ class BrokerInstrumentation : Instrumentation() {
                 bundle.putBoolean("carrier_volte_provisioned_bool", volte)
                 bundle.putBoolean("carrier_volte_provisioning_required_bool", false)
                 bundle.putBoolean("hide_lte_plus_data_icon_bool", !showLtePlus)
+                bundle.putBoolean("show_4g_for_lte_data_icon_bool", show4gIcon)
 
                 // VoNR (5G Calling) overrides
                 bundle.putBoolean("vonr_enabled_bool", vonr)

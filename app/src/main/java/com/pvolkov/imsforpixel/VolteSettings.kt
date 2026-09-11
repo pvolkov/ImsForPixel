@@ -11,8 +11,37 @@ object VolteSettings {
     const val BOOT_STATUS_SUCCESS = "success"
     const val BOOT_STATUS_FAILED = "failed"
 
+    const val KEY_SHOW_4G_ICON = "show_4g_icon"
+    const val KEY_SHOW_LTE_PLUS = "show_lte_plus"
+    const val KEY_SHOW_VOWIFI_SPN = "show_vowifi_spn"
+
     fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    fun migrateDisplaySettings(prefs: SharedPreferences) {
+        if (prefs.getBoolean("initialized_defaults_v6", false)) return
+        val editor = prefs.edit()
+        if (!prefs.contains(KEY_SHOW_4G_ICON)) {
+            editor.putBoolean(KEY_SHOW_4G_ICON, prefs.getBoolean("show_4g_icon_slot_0", true))
+        }
+        if (!prefs.contains(KEY_SHOW_LTE_PLUS)) {
+            editor.putBoolean(KEY_SHOW_LTE_PLUS, prefs.getBoolean("show_lte_plus_slot_0", true))
+        }
+        if (!prefs.contains(KEY_SHOW_VOWIFI_SPN)) {
+            editor.putBoolean(KEY_SHOW_VOWIFI_SPN, prefs.getBoolean("show_vowifi_spn_slot_0", true))
+        }
+        editor.putBoolean("initialized_defaults_v6", true)
+        editor.commit()
+    }
+
+    fun show4gIcon(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_SHOW_4G_ICON, true)
+
+    fun showLtePlus(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_SHOW_LTE_PLUS, true)
+
+    fun showVowifiSpn(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_SHOW_VOWIFI_SPN, true)
 
     fun isApplyOnBoot(prefs: SharedPreferences, slot: Int): Boolean =
         prefs.getBoolean("apply_on_boot_slot_$slot", false)

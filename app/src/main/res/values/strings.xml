@@ -60,6 +60,9 @@
     <string name="carrier_settings_slot">Настройки оператора (слот %1$d)</string>
     <string name="carrier_settings_named">Настройки: %1$s</string>
     <string name="display_at_carrier_header">Настройки отображения</string>
+    <string name="display_settings_header">Значки и отображение</string>
+    <string name="display_settings_note">Одинаково для всех SIM-карт. Чтобы увидеть изменения в строке состояния, примените настройки.</string>
+    <string name="display_settings_apply">Применить ко всем SIM</string>
     <string name="config_applied">Конфиг: применён</string>
     <string name="config_system_default">Конфиг: по умолчанию</string>
     <string name="ims_registered">IMS: зарегистрирован</string>
@@ -76,8 +79,10 @@
     <string name="ss_ut_desc">Переадресация, ожидание вызова и др.</string>
     <string name="apply_on_boot_title">Применять при загрузке</string>
     <string name="apply_on_boot_desc">Автоматически применять настройки этой SIM после перезагрузки (нужны Wi‑Fi и беспроводная отладка)</string>
-    <string name="show_lte_plus_title">Иконка LTE+</string>
-    <string name="show_lte_plus_desc">Показывать LTE+ вместо LTE в строке состояния при хорошем сигнале</string>
+    <string name="show_4g_icon_title">Иконка 4G</string>
+    <string name="show_4g_icon_desc">Показывать 4G вместо LTE в строке состояния</string>
+    <string name="show_lte_plus_title">Иконка LTE+ / 4G+</string>
+    <string name="show_lte_plus_desc">При хорошем сигнале показывать «+»: LTE+ или 4G+, в зависимости от настройки выше</string>
     <string name="show_vowifi_spn_title">Метка VoWiFi</string>
     <string name="show_vowifi_spn_desc">Показывать «VoWiFi» рядом с названием оператора при звонках через Wi‑Fi</string>
 

@@ -84,13 +84,22 @@ class MainActivity : ComponentActivity() {
                 editor.putBoolean("wfc_roaming_slot_$slot", true)
                 editor.putBoolean("ss_ut_slot_$slot", true)
                 editor.putBoolean("show_ims_slot_$slot", true)
-                editor.putBoolean("show_lte_plus_slot_$slot", true)
-                editor.putBoolean("show_vowifi_spn_slot_$slot", true)
                 editor.putBoolean("allow_apn_slot_$slot", false) // Hidden and default false
             }
             editor.putBoolean("initialized_defaults_v4", true)
             editor.apply()
         }
+        if (!prefs.getBoolean("initialized_defaults_v5", false)) {
+            val editor = prefs.edit()
+            for (slot in 0..1) {
+                if (!prefs.contains("show_4g_icon_slot_$slot")) {
+                    editor.putBoolean("show_4g_icon_slot_$slot", true)
+                }
+            }
+            editor.putBoolean("initialized_defaults_v5", true)
+            editor.apply()
+        }
+        VolteSettings.migrateDisplaySettings(prefs)
 
         // Setup dynamic broadcast receiver for notification pairing code input
         val pairAction = "$packageName.ACTION_PAIR"
@@ -430,10 +439,6 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     .putBoolean("ss_ut_slot_1", true)
                     .putBoolean("show_ims_slot_0", true)
                     .putBoolean("show_ims_slot_1", true)
-                    .putBoolean("show_lte_plus_slot_0", true)
-                    .putBoolean("show_lte_plus_slot_1", true)
-                    .putBoolean("show_vowifi_spn_slot_0", true)
-                    .putBoolean("show_vowifi_spn_slot_1", true)
                     .putBoolean("allow_apn_slot_0", false)
                     .putBoolean("allow_apn_slot_1", false)
                     .putBoolean("cross_sim_slot_0", false)
@@ -660,6 +665,14 @@ fun MainScreen(recheckSignal: MutableState<Long> = remember { mutableStateOf(Sys
                     onActivateSlot = { startInstrument(clear = false, slot = selectedSimSlot) },
                 )
             }
+
+            item {
+                DisplaySettingsPanel(
+                    isAdbReady = hasAdbReady,
+                    isApplying = isApplying,
+                    onApplyAll = { startInstrument(clear = false, slot = null) },
+                )
+            }
         }
     }
 }
@@ -720,8 +733,6 @@ private fun resetSlotPrefsToDefaults(prefs: android.content.SharedPreferences, s
         .putBoolean("wfc_roaming_slot_$slot", true)
         .putBoolean("ss_ut_slot_$slot", true)
         .putBoolean("show_ims_slot_$slot", true)
-        .putBoolean("show_lte_plus_slot_$slot", true)
-        .putBoolean("show_vowifi_spn_slot_$slot", true)
         .putBoolean("allow_apn_slot_$slot", false)
         .putBoolean("cross_sim_slot_$slot", false)
         .putBoolean("apply_on_boot_slot_$slot", false)
@@ -859,8 +870,6 @@ fun ConfigPanel(
     var wfcRoamingEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("wfc_roaming_slot_$slotIndex", true)) }
     var ssUtEnabled by remember(slotIndex) { mutableStateOf(prefs.getBoolean("ss_ut_slot_$slotIndex", true)) }
     var allowApnEdit by remember(slotIndex) { mutableStateOf(prefs.getBoolean("allow_apn_slot_$slotIndex", false)) } // Default false
-    var showLtePlus by remember(slotIndex) { mutableStateOf(prefs.getBoolean("show_lte_plus_slot_$slotIndex", true)) }
-    var showVowifiSpn by remember(slotIndex) { mutableStateOf(prefs.getBoolean("show_vowifi_spn_slot_$slotIndex", true)) }
     var applyOnBoot by remember(slotIndex) { mutableStateOf(VolteSettings.isApplyOnBoot(prefs, slotIndex)) }
     var carrierLabel by remember(slotIndex) { mutableStateOf(CarrierInfo.getCarrierLabel(context, slotIndex)) }
 
@@ -893,19 +902,6 @@ fun ConfigPanel(
             ToggleRow(stringResource(R.string.ss_ut_title), stringResource(R.string.ss_ut_desc), ssUtEnabled) {
                 ssUtEnabled = it
                 prefs.edit().putBoolean("ss_ut_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-                onConfigChanged()
-            }
-        }
-
-        SettingsSectionCard(title = stringResource(R.string.display_at_carrier_header)) {
-            ToggleRow(stringResource(R.string.show_lte_plus_title), stringResource(R.string.show_lte_plus_desc), showLtePlus) {
-                showLtePlus = it
-                prefs.edit().putBoolean("show_lte_plus_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
-                onConfigChanged()
-            }
-            ToggleRow(stringResource(R.string.show_vowifi_spn_title), stringResource(R.string.show_vowifi_spn_desc), showVowifiSpn) {
-                showVowifiSpn = it
-                prefs.edit().putBoolean("show_vowifi_spn_slot_$slotIndex", it).putBoolean("clear_slot_$slotIndex", false).commit()
                 onConfigChanged()
             }
         }
@@ -969,6 +965,66 @@ fun ConfigPanel(
                         Text(stringResource(R.string.activate_slot_named, carrierLabel))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DisplaySettingsPanel(
+    isAdbReady: Boolean,
+    isApplying: Boolean,
+    onApplyAll: () -> Unit,
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("volte_settings", Context.MODE_PRIVATE) }
+    var show4gIcon by remember { mutableStateOf(VolteSettings.show4gIcon(prefs)) }
+    var showLtePlus by remember { mutableStateOf(VolteSettings.showLtePlus(prefs)) }
+    var showVowifiSpn by remember { mutableStateOf(VolteSettings.showVowifiSpn(prefs)) }
+
+    fun persist(key: String, value: Boolean) {
+        prefs.edit()
+            .putBoolean(key, value)
+            .putBoolean("clear_slot_0", false)
+            .putBoolean("clear_slot_1", false)
+            .commit()
+    }
+
+    SettingsSectionCard(title = stringResource(R.string.display_settings_header)) {
+        Text(
+            text = stringResource(R.string.display_settings_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        ToggleRow(stringResource(R.string.show_4g_icon_title), stringResource(R.string.show_4g_icon_desc), show4gIcon) {
+            show4gIcon = it
+            persist(VolteSettings.KEY_SHOW_4G_ICON, it)
+        }
+        ToggleRow(stringResource(R.string.show_lte_plus_title), stringResource(R.string.show_lte_plus_desc), showLtePlus) {
+            showLtePlus = it
+            persist(VolteSettings.KEY_SHOW_LTE_PLUS, it)
+        }
+        ToggleRow(stringResource(R.string.show_vowifi_spn_title), stringResource(R.string.show_vowifi_spn_desc), showVowifiSpn) {
+            showVowifiSpn = it
+            persist(VolteSettings.KEY_SHOW_VOWIFI_SPN, it)
+        }
+        Button(
+            onClick = onApplyAll,
+            enabled = isAdbReady && !isApplying,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+        ) {
+            if (isApplying) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text(stringResource(R.string.display_settings_apply))
             }
         }
     }
